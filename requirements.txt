@@ -1,0 +1,17 @@
+
+# pip3 install -r requirements.txt
+
+# Base ----------------------------------------
+matplotlib>=3.2.2
+numpy
+pyyaml==4.2b4
+opencv-python
+rospkg
+utm
+pyproj
+scipy
+empy
+
+
+# apt
+# sudo apt-get install python3-tk

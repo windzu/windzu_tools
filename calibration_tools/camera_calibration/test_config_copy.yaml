@@ -1,0 +1,218 @@
+/camera/test_wild:
+  camera_model: fisheye
+  device_name: /dev/fisheye_left
+  input_mode: device_name
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /camera/back_wild/compressed
+  scale_xy:
+  - 1
+  - 1.0
+  shift_xy:
+  - 0
+  - 0
+/camera/back_wild:
+  camera_model: fisheye
+  device_name: /dev/fisheye_left
+  distortion_coefficients:
+  - - 0.059331122785806656
+  - - -0.005707334261387587
+  - - -0.0023111277259886265
+  - - 8.965324377641082e-05
+  homography_matrix:
+  - - 1.3591243028640747
+    - -2.262817859649658
+    - -719.6102294921875
+  - - 0.1850593239068985
+    - -3.865234375
+    - 476.7290954589844
+  - - 0.0001766863715602085
+    - -0.004572643898427486
+    - 1.0
+  input_mode: ros_topic
+  intrinsics_matrix:
+  - - 466.40179443359375
+    - 0.0
+    - 970.4144897460938
+  - - 0.0
+    - 466.4879150390625
+    - 539.4417114257812
+  - - 0.0
+    - 0.0
+    - 1.0
+  mask:
+  - - 381
+    - 936
+  - - 610
+    - 936
+  - - 999
+    - 1324
+  - - 0
+    - 1324
+  mask_size:
+  - 1000
+  - 1325
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /camera/back_wild/compressed
+  scale_xy:
+  - 0.48
+  - 1.0
+  shift_xy:
+  - -11
+  - -8
+/camera/front_wild:
+  camera_model: fisheye
+  device_name: /dev/fisheye_left
+  distortion_coefficients:
+  - - 0.05237927660346031
+  - - -0.005004954058676958
+  - - 9.695103653939441e-05
+  - - -0.0005728382966481149
+  homography_matrix:
+  - - -3.5577292442321777
+    - -7.538200855255127
+    - 4760.408203125
+  - - 0.6110184192657471
+    - -6.235466957092285
+    - 908.224853515625
+  - - 0.0013829886447638273
+    - -0.015099951066076756
+    - 1.0
+  input_mode: ros_topic
+  intrinsics_matrix:
+  - - 470.1060485839844
+    - 0.0
+    - 979.6259155273438
+  - - 0.0
+    - 471.4686584472656
+    - 548.0827026367188
+  - - 0.0
+    - 0.0
+    - 1.0
+  mask:
+  - - 0
+    - 0
+  - - 999
+    - 0
+  - - 610
+    - 373
+  - - 381
+    - 373
+  mask_size:
+  - 1000
+  - 1325
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /camera/front_wild/compressed
+  scale_xy:
+  - 0.26
+  - 0.86
+  shift_xy:
+  - 22
+  - -300
+/camera/left_wild:
+  camera_model: fisheye
+  device_name: /dev/fisheye_left
+  distortion_coefficients:
+  - - 0.05937843397259712
+  - - -0.005645904690027237
+  - - -0.0015791419427841902
+  - - 8.941040869103745e-05
+  homography_matrix:
+  - - -0.32265007495880127
+    - -1.889902114868164
+    - 869.947998046875
+  - - 1.4064531326293945
+    - -2.3037045001983643
+    - -1462.9373779296875
+  - - -0.0005860021919943392
+    - -0.003897391026839614
+    - 1.0
+  input_mode: ros_topic
+  intrinsics_matrix:
+  - - 462.32196044921875
+    - 0.0
+    - 968.8904418945312
+  - - 0.0
+    - 464.53851318359375
+    - 544.87451171875
+  - - 0.0
+    - 0.0
+    - 1.0
+  mask:
+  - - 0
+    - 0
+  - - 381
+    - 373
+  - - 381
+    - 936
+  - - 0
+    - 1324
+  mask_size:
+  - 1000
+  - 1325
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /camera/left_wild/compressed
+  scale_xy:
+  - 0.3
+  - 0.87
+  shift_xy:
+  - 214
+  - -102
+/camera/right_wild:
+  camera_model: fisheye
+  device_name: /dev/fisheye_left
+  distortion_coefficients:
+  - - 0.04494516924023628
+  - - -0.014490843750536442
+  - - 0.007148252800107002
+  - - -0.0018349091988056898
+  homography_matrix:
+  - - 0.06670593470335007
+    - -1.861438274383545
+    - 236.3706817626953
+  - - -1.226341962814331
+    - -2.1982715129852295
+    - 1801.506103515625
+  - - 0.00015741006063763052
+    - -0.0036924476735293865
+    - 1.0
+  input_mode: ros_topic
+  intrinsics_matrix:
+  - - 480.03106689453125
+    - 0.0
+    - 981.6754760742188
+  - - 0.0
+    - 482.55621337890625
+    - 574.4132080078125
+  - - 0.0
+    - 0.0
+    - 1.0
+  mask:
+  - - 999
+    - 0
+  - - 999
+    - 1324
+  - - 610
+    - 936
+  - - 610
+    - 373
+  mask_size:
+  - 1000
+  - 1325
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /camera/right_wild/compressed
+  scale_xy:
+  - 0.33
+  - 0.73
+  shift_xy:
+  - -67
+  - 40

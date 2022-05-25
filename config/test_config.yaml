@@ -1,0 +1,48 @@
+/camera/test:
+  camera_model: pinhole
+  device_name: /camera/front_middle
+  distortion_coefficients:
+  - 0.030321763828396797
+  - -0.29497000575065613
+  - 0.002203979529440403
+  - 0.0037988752592355013
+  - 1.7621519565582275
+  input_mode: ros_topic
+  intrinsics_matrix:
+  - 2392.01513671875
+  - 0.0
+  - 1047.5059814453125
+  - 0.0
+  - 2390.162353515625
+  - 298.3227233886719
+  - 0.0
+  - 0.0
+  - 1.0
+  resolution:
+  - 2048
+  - 1024
+  ros_topic: /usb_cam/image_raw/compressed
+/camera/front_middle:
+  camera_model: pinhole
+  device_name: /dev/fisheye_left
+  distortion_coefficients:
+  - 0.09317589226670506
+  - -1.1142011210708962
+  - -0.0019014241793479632
+  - -0.0006630008927909825
+  - 8.808548905418405
+  input_mode: ros_topic
+  intrinsics_matrix:
+  - 2933.9386664993945
+  - 0.0
+  - 1015.0192108304831
+  - 0.0
+  - 2944.0172599872517
+  - 281.9696747673452
+  - 0.0
+  - 0.0
+  - 1.0
+  resolution:
+  - 2048
+  - 1024
+  ros_topic: /usb_cam/image_raw/compressed

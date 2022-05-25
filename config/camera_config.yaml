@@ -1,0 +1,199 @@
+# camera config
+# there are two types camera : surrond cameras and around cameras (maybe there is a better translation??)
+# 1. surrond cameras : 8 cameras , which are used to to detect the surrounding environment
+# 2. around cameras : 4 cameras , which are used to to detect the surrounding ground , mainly for 360-degree panoramic image
+
+# surrond cameras default order by : front left right back 
+# the camera layout is as follows
+# +─────────────+─────────────+───────────────+──────────────+──────────────+
+# |             | front_left  | front_middle  | front_right  |              |
+# +─────────────+─────────────+───────────────+──────────────+──────────────+
+# | left_front  |             |               |              | right_front  |
+# +─────────────+─────────────+───────────────+──────────────+──────────────+
+# |             |             |     car       |              |              |
+# +─────────────+─────────────+───────────────+──────────────+──────────────+
+# | left_back   |             |               |              | left_back    |
+# +─────────────+─────────────+───────────────+──────────────+──────────────+
+# |             |             | back_middle   |              |              |
+# +─────────────+─────────────+───────────────+──────────────+──────────────+
+# pinhole && radtan -> normal 
+
+##################################
+# config explain  
+##################################
+# /camera/front_left: # camera_id 
+#   device_name: /dev/video0 # usb device name  
+#   publish_topic: /camera/front_left # ros publish topic 
+#   resolution: [752, 480] # camera resolution
+#   fps: 30 # fps 
+#   camera_type: normal # camera type : normal or fisheye (optinal)
+#   camera_model: pinhole # camera model (optinal)
+#   distortion_model: radtan # camera distortion model (optinal)
+#   distortion_coeffs: [-0.2827194127325638, 0.07433133599948077, 0.0004437263089959797,-0.0005373178971205249,0] (optinal)
+#   intrinsics: [459.3801391263343, 458.3358524061085, 369.28412125423023, 247.4643914606113] (optinal)
+#   cam_overlaps: [1]
+
+# front cameras
+/camera/front_left:
+  device_name: /dev/video0 
+  publish_topic: /camera/front_left 
+  img_size: [752, 480]
+  fps: 30 
+  camera_type: normal
+  camera_model: pinhole
+  distortion_model: radtan
+  distortion_coeffs: [-0.2827194127325638, 0.07433133599948077, 0.0004437263089959797,-0.0005373178971205249,0]
+  intrinsics: [459.3801391263343, 458.3358524061085, 369.28412125423023, 247.4643914606113]
+  cam_overlaps: [1]
+/camera/front_middle:
+  device_name: /dev/video1
+  publish_topic: /camera/front_middle
+  resolution: [752, 480]
+  fps: 30
+  camera_model: pinhole
+  distortion_model: radtan
+  distortion_coeffs: [-0.2827194127325638, 0.07433133599948077, 0.0004437263089959797,-0.0005373178971205249,0]
+  intrinsics: [459.3801391263343, 458.3358524061085, 369.28412125423023, 247.4643914606113]
+  cam_overlaps: [1]
+/camera/front_right:
+  device_name: /dev/video2
+  publish_topic: /camera/front_right
+  resolution: [752, 480]
+  fps: 30
+  camera_model: pinhole
+  distortion_model: radtan
+  distortion_coeffs: [-0.2827194127325638, 0.07433133599948077, 0.0004437263089959797,-0.0005373178971205249,0]
+  intrinsics: [459.3801391263343, 458.3358524061085, 369.28412125423023, 247.4643914606113]
+  cam_overlaps: [1]
+# left cameras
+/camera/left_front:
+  device_name: /dev/video3
+  publish_topic: /camera/front_right
+  resolution: [752, 480]
+  fps: 30
+  camera_model: pinhole
+  distortion_model: radtan
+  distortion_coeffs: [-0.2827194127325638, 0.07433133599948077, 0.0004437263089959797,-0.0005373178971205249,0]
+  intrinsics: [459.3801391263343, 458.3358524061085, 369.28412125423023, 247.4643914606113]
+  cam_overlaps: [1]
+/camera/left_back:
+  device_name: /dev/video4
+  publish_topic: /camera/front_right
+  resolution: [752, 480]
+  fps: 30
+  camera_model: pinhole
+  distortion_model: radtan
+  distortion_coeffs: [-0.2827194127325638, 0.07433133599948077, 0.0004437263089959797,-0.0005373178971205249,0]
+  intrinsics: [459.3801391263343, 458.3358524061085, 369.28412125423023, 247.4643914606113]
+  cam_overlaps: [1]
+# right cameras
+/camera/right_front:
+  device_name: /dev/video5
+  publish_topic: /camera/front_right
+  resolution: [752, 480]
+  fps: 30
+  camera_model: pinhole
+  distortion_model: radtan
+  distortion_coeffs: [-0.2827194127325638, 0.07433133599948077, 0.0004437263089959797,-0.0005373178971205249,0]
+  intrinsics: [459.3801391263343, 458.3358524061085, 369.28412125423023, 247.4643914606113]
+  cam_overlaps: [1]
+/camera/right_back:
+  device_name: /dev/video6
+  publish_topic: /camera/front_right
+  resolution: [752, 480]
+  fps: 30
+  camera_model: pinhole
+  distortion_model: radtan
+  distortion_coeffs: [-0.2827194127325638, 0.07433133599948077, 0.0004437263089959797,-0.0005373178971205249,0]
+  intrinsics: [459.3801391263343, 458.3358524061085, 369.28412125423023, 247.4643914606113]
+  cam_overlaps: [1]
+# back cameras
+/camera/back_middle:
+  device_name: /dev/video7
+  publish_topic: /camera/front_right
+  resolution: [752, 480]
+  fps: 30
+  camera_model: pinhole
+  distortion_model: radtan
+  distortion_coeffs: [-0.2827194127325638, 0.07433133599948077, 0.0004437263089959797,-0.0005373178971205249,0]
+  intrinsics: [459.3801391263343, 458.3358524061085, 369.28412125423023, 247.4643914606113]
+  cam_overlaps: [1]
+
+
+
+# 
+# /camera/back_middle:
+#   T_cn_cnm1:
+#   - [0.99999510238019, 0.0022858369664562833, 0.002137794425081466, -0.1093887720188161]
+#   - [-0.0023146121890269857, 0.9999054335563567, 0.013556050859172176, 0.0005957687167298818]
+#   - [-0.00210660533929238, -0.013560932631822816, 0.999905827225798, -3.167788060595802e-05]
+#   - [0.0, 0.0, 0.0, 1.0]
+#   cam_overlaps: [0]
+#   camera_model: pinhole
+#   distortion_coeffs: [-0.28426968386350965, 0.07593374589188252, 0.00023850466892032097,
+#     -0.000338987939833105]
+#   distortion_model: radtan
+#   intrinsics: [458.8921019344243, 457.59050608166297, 380.8879990532911, 254.41636504178857]
+#   resolution: [752, 480]
+#   rostopic: /cam1/image_raw_throttle
+
+# cam0:
+#   cam_overlaps: []
+#   camera_model: pinhole
+#   distortion_coeffs: [-0.31056737959140196, 0.10691606787440254, 0.0006911083253456362,
+#     -0.017329561227148047]
+#   distortion_model: radtan
+#   intrinsics: [890.3623450896902, 896.3720760852631, 723.6708532726979, 347.4887042173552]
+#   resolution: [1280, 720]
+#   rostopic: /camera/front_throttle
+# 
+
+# sensing_90:
+#   cam_overlaps: []
+#   camera_model: pinhole
+#   distortion_coeffs: [-0.43189439935449714, 0.15404758039741612, 0.0045430946156851115,
+#     0.011937441454743288, 0]
+#   distortion_model: radtan
+#   intrinsics: [1370.8996216852643, 1399.3621513125654, 999.9791917061536, 561.6409732259041]
+#   resolution: [1920, 1080]
+#   rostopic: /camera/front_throttle
+
+
+
+# # omni-radtan = opencv omni
+# fisheye_190s:
+#   cam_overlaps: []
+#   camera_model: omni
+#   distortion_coeffs: [0.8287064600613232, -10.39861763859114, -0.013815823999346895,
+#     0.034423605771033906]
+#   distortion_model: radtan
+#   intrinsics: [1.5339614831448518, 1100.5455001555167, 1112.072520186167, 927.796608661907,
+#     562.6234030161783]
+#   resolution: [1920, 1080]
+#   rostopic: /camera/front_throttle
+
+
+
+# # old pinhole-equi = opencv fisheye and alpha = 0
+# fisheye_190s:
+#   cam_overlaps: []
+#   camera_model: pinhole
+#   distortion_coeffs: [0.11805904472075703, -2.3933014064917186, 18.455064809149345,
+#     -43.80055516751605]
+#   distortion_model: equidistant
+#   intrinsics: [475.522349714862, 478.9437160790752, 949.2599776152767, 567.5843772943183]
+#   resolution: [1920, 1080]
+#   rostopic: /camera/front_throttle
+
+
+
+# new pinhole-equi
+# fisheye_190s:
+#   cam_overlaps: []
+#   camera_model: pinhole
+#   distortion_coeffs: [0.11805904472075703, -2.3933014064917186, 18.455064809149345,
+#     -43.80055516751605]
+#   distortion_model: equidistant
+#   intrinsics: [1100, 1100, 949.2599776152767, 567.5843772943183]
+#   resolution: [1920, 1080]
+#   rostopic: /camera/front_throttle

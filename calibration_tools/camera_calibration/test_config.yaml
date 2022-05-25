@@ -1,0 +1,22 @@
+/camera/back_wild:
+  camera_model: pinhole
+  device_name: /dev/fisheye_left
+  input_mode: device_name
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /camera/back_wild/compressed
+/camera/test_wild:
+  camera_model: fisheye
+  device_name: /dev/fisheye_left
+  input_mode: device_name
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /camera/back_wild/compressed
+  scale_xy:
+  - 1.0
+  - 1.0
+  shift_xy:
+  - 0
+  - 0
