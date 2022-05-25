@@ -62,9 +62,12 @@ class CameraCalibrator:
     def _remap(self, src):
         return cv2.remap(src, self.__camera_info.map1, self.__camera_info.map2, cv2.INTER_LINEAR)
 
+    def _remap(self, src, camera_info):
+        return cv2.remap(src, camera_info.map1, camera_info.map2, cv2.INTER_LINEAR)
+
     def _get_parameters(self, corners, ids, board, size):
         """计算当前corners的评价指标,并返回评价指标
-        
+
         Args:
             corners (list): 检测出的角点(坐标是相较与原图)
             ids (none): 暂未使用
@@ -103,9 +106,9 @@ class CameraCalibrator:
         return params
 
     def _is_slow_moving(self, corners, ids, last_frame_corners, last_frame_ids):
-        """ 通过与上一帧读比，计算棋盘格的移动速度(平均移动距离)，然后与预先设置的移速阈值对比，
+        """通过与上一帧读比，计算棋盘格的移动速度(平均移动距离)，然后与预先设置的移速阈值对比，
         如果移速低于阈值,则认为棋盘格移动很慢.返回True,否则返回False
-            """
+        """
         # If we don't have previous frame corners, we can't accept the sample
         if last_frame_corners is None:
             return False
@@ -128,7 +131,7 @@ class CameraCalibrator:
         return average_motion <= self.__calibrator_target_threshold.chessboard_max_speed
 
     def _is_good_sample(self, params, corners, ids, last_frame_corners, last_frame_ids):
-        """ 判断当前检测出的角点是否是一个好的样本
+        """判断当前检测出的角点是否是一个好的样本
         通过两方面判断:
         1. 棋盘格的偏移量是否在预先设置的范围内 (通过计算当前角点指标与历史角点指标的曼哈顿距离，距离太小则丢弃)
         2. 棋盘格的移动速度是否低于阈值 (移动速度不能太快，一般不启用)
@@ -194,7 +197,8 @@ class CameraCalibrator:
         #     2. 如果 Y 过小，表示在y方向要再多拍一些样本
         # NOTE : 如果已经采集了足够多的样本，但进度还是不符合需求，这种情况可能是以为阈值设置的不合理，我们也认为可以用于标定了
         progress = [
-            min((hi - lo) / r, 1.0) for (lo, hi, r) in zip(min_params, max_params, self.__calibrator_target_threshold.param_ranges)
+            min((hi - lo) / r, 1.0)
+            for (lo, hi, r) in zip(min_params, max_params, self.__calibrator_target_threshold.param_ranges)
         ]
         self.goodenough = (len(self._db) >= 40) or all([p == 1.0 for p in progress])
 
@@ -229,6 +233,12 @@ class CameraCalibrator:
         将尺寸一律降采样至VGA为标准,通过计算面积比得到缩放系数
 
         Returns (resized_img, corners, downsampled_corners, ids, board, (x_scale, y_scale)).
+            resized_img : 缩放后的图像
+            corners: 缩放图像检测到的角点又放缩回原尺寸后检测到的角点
+            downsampled_corners :缩放后图像中检测到的角点
+            ids: 未启用参数
+            board: chessboard_info
+            (x_scale, y_scale): x y方向缩放的尺度比例
         """
         # 原图过大的话就缩放至与VGA(640*480)尺寸类似的大小，通过计算面积而得到缩放系数
         height = img.shape[0]
@@ -373,7 +383,7 @@ class CameraCalibrator:
         Params:
             src (np.ndarray): 原始图像中检测到的角点
 
-            """
+        """
         if self.__camera_info.camera_model == CameraModel.PINHOLE:
             return cv2.undistortPoints(
                 src,
@@ -389,7 +399,39 @@ class CameraCalibrator:
             new_mat[0, 2] += self.__camera_info.shift_xy[0]
             new_mat[1, 2] += self.__camera_info.shift_xy[1]
             return cv2.fisheye.undistortPoints(
-                src, self.__camera_info.intrinsics_matrix, self.__camera_info.distortion_coefficients, np.eye(3, 3), new_mat
+                src,
+                self.__camera_info.intrinsics_matrix,
+                self.__camera_info.distortion_coefficients,
+                np.eye(3, 3),
+                new_mat,
+            )
+
+    def _undistort_points(self, src, camera_info):
+        """通过指定参数，角点去畸变
+        Params:
+            src (np.ndarray): 原始图像中检测到的角点
+
+        """
+        if camera_info.camera_model == CameraModel.PINHOLE:
+            return cv2.undistortPoints(
+                src,
+                camera_info.intrinsics_matrix,
+                camera_info.distortion_coefficients,
+                np.eye(3, 3),
+                camera_info.intrinsics_matrix,
+            )
+        elif camera_info.camera_model == CameraModel.FISHEYE:
+            new_mat = camera_info.intrinsics_matrix.copy()
+            new_mat[0, 0] *= camera_info.scale_xy[0]
+            new_mat[1, 1] *= camera_info.scale_xy[1]
+            new_mat[0, 2] += camera_info.shift_xy[0]
+            new_mat[1, 2] += camera_info.shift_xy[1]
+            return cv2.fisheye.undistortPoints(
+                src,
+                camera_info.intrinsics_matrix,
+                camera_info.distortion_coefficients,
+                np.eye(3, 3),
+                new_mat,
             )
 
     def __get_corners(self, img, board, refine=True, checkerboard_flags=0):
@@ -437,9 +479,13 @@ class CameraCalibrator:
                 if not np.any(direction_corners):
                     corners = np.copy(np.flipud(corners))
                 elif direction_corners[0][0]:
-                    corners = np.rot90(corners.reshape(board.n_rows, board.n_cols, 2)).reshape(board.n_cols * board.n_rows, 1, 2)
+                    corners = np.rot90(corners.reshape(board.n_rows, board.n_cols, 2)).reshape(
+                        board.n_cols * board.n_rows, 1, 2
+                    )
                 else:
-                    corners = np.rot90(corners.reshape(board.n_rows, board.n_cols, 2), 3).reshape(board.n_cols * board.n_rows, 1, 2)
+                    corners = np.rot90(corners.reshape(board.n_rows, board.n_cols, 2), 3).reshape(
+                        board.n_cols * board.n_rows, 1, 2
+                    )
 
         # 按照行和列的方向遍历角点，找到距离最近的角点间的距离，设置其作为cv2.cornerSubPix的搜寻半径，这样可以在保证速度情况下最大范围的进行亚像素搜索
         # NOTE : 这参考其ros的角点检测代码，个人认为亚像素搜索没必要这么大范围，除非是分辨率很低的情况或者是棋盘格square size很小，这样做可以确定搜索的边界；
@@ -456,7 +502,9 @@ class CameraCalibrator:
                     index = row * board.n_cols + col
                     min_distance = min(min_distance, self.__pdist(corners[index, 0], corners[index + board.n_cols, 0]))
             radius = int(math.ceil(min_distance * 0.5))
-            cv2.cornerSubPix(mono, corners, (radius, radius), (-1, -1), (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.1))
+            cv2.cornerSubPix(
+                mono, corners, (radius, radius), (-1, -1), (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.1)
+            )
 
         return (ok, corners)
 
@@ -476,8 +524,8 @@ class CameraCalibrator:
         corners = np.squeeze(corners)
 
         def pt2line(x0, y0, x1, y1, x2, y2):
-            """ 点到直线的距离
-            point is (x0, y0), line is (x1, y1, x2, y2) 
+            """点到直线的距离
+            point is (x0, y0), line is (x1, y1, x2, y2)
             """
             return abs((x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1)) / math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
@@ -515,18 +563,18 @@ class CameraCalibrator:
                 errors.append(pt2line(x, y, x_left, y_left, x_right, y_right))
 
         if errors:
-            return math.sqrt(sum([e ** 2 for e in errors]) / len(errors))
+            return math.sqrt(sum([e**2 for e in errors]) / len(errors))
         else:
             return None
 
     @staticmethod
     def __lmin(seq1, seq2):
-        """ Pairwise minimum of two sequences """
+        """Pairwise minimum of two sequences"""
         return [min(a, b) for (a, b) in zip(seq1, seq2)]
 
     @staticmethod
     def __lmax(seq1, seq2):
-        """ Pairwise maximum of two sequences """
+        """Pairwise maximum of two sequences"""
         return [max(a, b) for (a, b) in zip(seq1, seq2)]
 
     @staticmethod
@@ -561,8 +609,7 @@ class CameraCalibrator:
         up_left, up_right, down_right, _ = corners
 
         def angle(a, b, c):
-            """返回直线ab,bc的夹角 (弧度制)
-            """
+            """返回直线ab,bc的夹角 (弧度制)"""
             ab = a - b
             cb = c - b
             return math.acos(np.dot(ab, cb) / (np.linalg.norm(ab) * np.linalg.norm(cb)))
@@ -582,4 +629,3 @@ class CameraCalibrator:
         p = b + c
         q = a + b
         return abs(p[0] * q[1] - p[1] * q[0]) / 2.0
-
