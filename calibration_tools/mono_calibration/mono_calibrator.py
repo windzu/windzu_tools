@@ -15,9 +15,8 @@ import numpy as np
 
 # local
 # sys.path.append("../")
-from common.enum_common import Patterns
 from common.camera_calibrator import CameraCalibrator, HandleResult
-from common.enum_common import CameraModel, InfoCheckLevel
+from common.enum_common import CameraModel, CameraInfoCheckLevel
 from utils.get_corners import get_all_good_corners_from_images, quick_get_good_corners
 
 
@@ -367,7 +366,7 @@ class MonoCalibrator(CameraCalibrator):
             )
             print("fisheye calibration reproj_err : ", reproj_err)
 
-        info_check_level = InfoCheckLevel.COMPLETED
+        info_check_level = CameraInfoCheckLevel.COMPLETED
         self.camera_info.info_check(info_check_level)
         self.calibrated = True
 

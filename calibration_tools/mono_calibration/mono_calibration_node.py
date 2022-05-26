@@ -14,8 +14,7 @@ import sys
 
 # local
 sys.path.append("../../")
-from common.enum_common import InfoCheckLevel
-from common.camera_common import CalibratorFunctionFlags, CalibratorTargetThreshold
+from common.enum_common import CameraInfoCheckLevel
 from mono_calibrator import MonoCalibrator
 
 
@@ -104,7 +103,7 @@ class MonoCalibrationNode:
 
     def show_result(self):
         """显示标定结果,对应gui中的show result按钮"""
-        info_check_level = InfoCheckLevel.COMPLETED
+        info_check_level = CameraInfoCheckLevel.COMPLETED
         self.camera_info.info_check(info_check_level)
 
         # debug

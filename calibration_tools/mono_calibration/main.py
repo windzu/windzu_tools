@@ -1,7 +1,7 @@
 """
 Author: windzu
-Date: 2022-05-25 15:24:57
-LastEditTime: 2022-05-26 14:07:02
+Date: 2022-05-26 22:32:37
+LastEditTime: 2022-05-27 01:30:24
 LastEditors: windzu
 Description: 
 FilePath: /windzu_tools/calibration_tools/mono_calibration/main.py
@@ -9,7 +9,6 @@ FilePath: /windzu_tools/calibration_tools/mono_calibration/main.py
 @Licensed under the Apache License, Version 2.0 (the License)
 """
 
-import sys
 import rospy
 
 # local

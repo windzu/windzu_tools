@@ -14,7 +14,7 @@ import sys
 
 # local
 sys.path.append("../../")
-from common.enum_common import InfoCheckLevel
+from common.enum_common import CameraInfoCheckLevel
 from common.camera_common import CalibratorFunctionFlags, CalibratorTargetThreshold
 from calibration_tools.stereo_calibration.stereo_calibrator import StereoCalibrator
 
@@ -69,9 +69,9 @@ class StereoCalibrationNode:
                 cv2.destroyAllWindows()
                 return
             if key == 13:  # enter
-                print("*******start calibrate*******")
+
                 self.calibrator._do_calibration()
-                print("*******calibrate finished*******")
+
                 self.calibrator.calibrated = True
             if self.calibrator.calibrated is True:
                 cv2.destroyAllWindows()
@@ -79,26 +79,26 @@ class StereoCalibrationNode:
         cv2.destroyAllWindows()
 
     def show_result(self):
-        info_check_level = InfoCheckLevel.COMPLETED
+        camera_info_check_level = CameraInfoCheckLevel.COMPLETED
+        self.master_camera_info.info_check(camera_info_check_level)
+        self.slaver_camera_info.info_check(camera_info_check_level)
 
+        print("*******start show result*******")
+        if self.calibrator is None:
+            self.calibrator = StereoCalibrator(
+                chessboard_info=self.chessboard_info,
+                master_camera_info=self.master_camera_info,
+                slaver_camera_info=self.slaver_camera_info,
+            )
+            self.calibrator.calibrated = True
+        window_name = "show result"
+        cv2.namedWindow(window_name)
 
-#         self.camera_info.info_check(info_check_level)
-#
-#         # debug
-#         print(self.camera_info)
-#         print("start show result!!")
-#         if self.calibrator is None:
-#             self.calibrator = StereoCalibrator(
-#                 chessboard_info=self.chessboard_info,
-#                 camera_info=self.camera_info,
-#                 calibrator_function_flags=self.calibrator_function_flags,
-#                 calibrator_target_threshold=self.calibrator_target_threshold,
-#             )
-#         self.calibrator.calibrated = True
-#         while True:
-#             frame = self.get_frame.read()
-#             mono_handle_result = self.calibrator.handle_frame(frame)
-#             cv2.imshow("mono_handle_result", mono_handle_result.resized_img_with_corners)
-#             if cv2.waitKey(1) & 0xFF == ord("q"):
-#                 cv2.destroyAllWindows()
-#                 break
+        while True:
+            master_frame = self.master_get_frame.read()
+            slaver_frame = self.slaver_get_frame.read()
+            ok, stereo_handle_result = self.calibrator.handle_frame(master_frame, slaver_frame)
+            cv2.imshow("mono_handle_result", mono_handle_result.resized_img_with_corners)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                cv2.destroyAllWindows()
+                break

@@ -15,7 +15,7 @@ import numpy as np
 
 # local
 sys.path.append("../")
-from common.enum_common import CameraModel, FrameInputMode, Patterns, InfoCheckLevel
+from common.enum_common import CameraModel, FrameInputMode, Patterns, CameraInfoCheckLevel
 
 
 class CameraInfo:
@@ -72,37 +72,38 @@ class CameraInfo:
 
     def info_check(self, info_check_level):
         """对camera_info的完整性进行检查,如果camera_info中的相关信息不完整,则返回False,检查分几个等级
-            1. BASE: 基础检查,只检查camera_model 和 resolution
-                - camera_model
-                - resolution
-            2. ADVANCED: 检查相机内参和畸变系数,如果是鱼眼还需要检查scale_xy和shift_xy
-                - intrinsics_matrix 
-                - distortion_coefficients
-                * scale_xy
-                * shift_xy
-            3. COMPLETED : 完全的完备性检查,包括上述所有检查,并且如果map没有计算,还会将map计算
-                - map1 , map2
-            4. SURROUND_SPECIAL : 专门用于检查用于环视的检查,包括上述所有检查,还要检查mask_size mask homography_matrix
-                - mask_size
-                - mask
-                - homography_matrix
+        1. BASE: 基础检查,只检查camera_model 和 resolution
+            - camera_model
+            - resolution
+        2. ADVANCED: 检查相机内参和畸变系数,如果是鱼眼还需要检查scale_xy和shift_xy
+            - intrinsics_matrix
+            - distortion_coefficients
+            * scale_xy
+            * shift_xy
+        3. COMPLETED : 完全的完备性检查,包括上述所有检查,并且如果map没有计算,还会将map计算。
+        一个标定完内参的相机必须得能完成这个检查！！
+            - map1 , map2
+        4. SURROUND_SPECIAL : 专门用于检查用于环视的检查,包括上述所有检查,还要检查mask_size mask homography_matrix
+            - mask_size
+            - mask
+            - homography_matrix
         """
 
-        if info_check_level == InfoCheckLevel.BASE:
+        if info_check_level == CameraInfoCheckLevel.BASE:
             self.__base_check()
-        elif info_check_level == InfoCheckLevel.ADVANCED:
+        elif info_check_level == CameraInfoCheckLevel.ADVANCED:
             self.__base_check()
             self.__advanced_check()
-        elif info_check_level == InfoCheckLevel.COMPLETED:
+        elif info_check_level == CameraInfoCheckLevel.COMPLETED:
             self.__base_check()
             self.__advanced_check()
             self.__completed_check()
-        elif info_check_level == InfoCheckLevel.SURROUND_SPECIAL:
+        elif info_check_level == CameraInfoCheckLevel.SURROUND_SPECIAL:
             self.__base_check()
             self.__advanced_check()
             self.__completed_check()
             self.__surround_special_check()
-        elif info_check_level == InfoCheckLevel.IMU_TO_CAMERA:
+        elif info_check_level == CameraInfoCheckLevel.IMU_TO_CAMERA:
             self.__imu_to_camera_check()
 
     def __base_check(self):
@@ -133,7 +134,12 @@ class CameraInfo:
                 new_mat[0, 2] += self.shift_xy[0]
                 new_mat[1, 2] += self.shift_xy[1]
                 self.map1, self.map2 = cv2.fisheye.initUndistortRectifyMap(
-                    self.intrinsics_matrix, self.distortion_coefficients, np.eye(3, 3), new_mat, self.resolution, cv2.CV_16SC2,
+                    self.intrinsics_matrix,
+                    self.distortion_coefficients,
+                    np.eye(3, 3),
+                    new_mat,
+                    self.resolution,
+                    cv2.CV_16SC2,
                 )
             elif self.camera_model is CameraModel.PINHOLE:
                 self.map1, self.map2 = cv2.initUndistortRectifyMap(

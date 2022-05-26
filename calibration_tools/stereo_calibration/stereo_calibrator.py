@@ -45,6 +45,7 @@ class StereoCalibrator(CameraCalibrator):
 
         self.R = None
         self.T = None
+        self.reproj_error = None
 
         # 一些固定阈值设置
         self.reproj_error_thresh = 5.0
@@ -61,7 +62,6 @@ class StereoCalibrator(CameraCalibrator):
 
         img_width = self.master_camera_info.resolution[0]
         img_height = self.master_camera_info.resolution[1]
-        print("size: ", (img_width, img_height))
 
         # 首先快速检测角点
         (
@@ -158,7 +158,7 @@ class StereoCalibrator(CameraCalibrator):
                     flags=cv2.CALIB_FIX_INTRINSIC,
                 )
                 # debug
-                print("reproj error:", ret)
+                print("current sample reproj error:", ret)
                 # 3. 判断投影误差是否超过阈值然后决定是否存储本次数据：master_image slaver_image reproj_error
                 if ret < self.reproj_error_thresh:
                     self.stored_data["master_images"].append(master_gray)
@@ -166,7 +166,9 @@ class StereoCalibrator(CameraCalibrator):
                     self.stored_data["reproj_errors"].append(ret)
                 # 4. 检查是否已经采集到足够数据，如果是，则进行正式标定
                 if len(self.stored_data["master_images"]) >= self.min_samples:
+                    print("*******start calibrate*******")
                     self._do_calibration()
+                    print("*******calibrate finished*******")
                 # 5. 返回必要的信息
                 stereo_handle_result.show_master_img = master_resized_gray
                 stereo_handle_result.show_slaver_img = slaver_resized_gray
@@ -183,6 +185,7 @@ class StereoCalibrator(CameraCalibrator):
 
     def _do_calibration(self):
         """数据采集完毕后，使用收集到的数据进行正式标定"""
+        print("*******start calibrate*******")
         master_images = self.stored_data["master_images"]
         slaver_images = self.stored_data["slaver_images"]
 
@@ -193,13 +196,25 @@ class StereoCalibrator(CameraCalibrator):
         master_corners = get_all_good_corners_from_images(master_images, board_cols, board_rows, checkerboard_flags)
         slaver_corners = get_all_good_corners_from_images(slaver_images, board_cols, board_rows, checkerboard_flags)
         self._do_calibration_from_corners(master_corners, slaver_corners, calibration_flags)
+        print("reproj error:", self.reproj_error)
+        print("*******calibrate finished*******")
 
     def _do_calibration_from_corners(self, master_corners, slaver_corners, calibrate_flags=None):
         boards = [self.chessboard_info.BOARD for i in range(len(master_corners))]
         img_width = self.master_camera_info.resolution[0]
         img_height = self.master_camera_info.resolution[1]
         if self.master_camera_info.camera_model == CameraModel.PINHOLE:
-            ret, cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, R, T, E, F = cv2.stereoCalibrate(
+            (
+                self.reproj_error,
+                cameraMatrix1,
+                distCoeffs1,
+                cameraMatrix2,
+                distCoeffs2,
+                self.R,
+                self.T,
+                E,
+                F,
+            ) = cv2.stereoCalibrate(
                 boards,
                 master_corners,
                 slaver_corners,
@@ -211,9 +226,16 @@ class StereoCalibrator(CameraCalibrator):
                 criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 1, 1e-5),
                 flags=cv2.CALIB_FIX_INTRINSIC,
             )
-            print("reproj error:", ret)
         elif self.master_camera_info.camera_model == CameraModel.FISHEYE:
-            ret, cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, R, T = cv2.fisheye.stereoCalibrate(
+            (
+                self.reproj_error,
+                cameraMatrix1,
+                distCoeffs1,
+                cameraMatrix2,
+                distCoeffs2,
+                self.R,
+                self.T,
+            ) = cv2.fisheye.stereoCalibrate(
                 boards,
                 master_corners,
                 slaver_corners,
@@ -223,7 +245,5 @@ class StereoCalibrator(CameraCalibrator):
                 self.slaver_camera_info.distortion_coefficients,
                 (img_width, img_height),
             )
-            print("reproj error:", ret)
-
         # TODO : camera info check
         self.calibrated = True
