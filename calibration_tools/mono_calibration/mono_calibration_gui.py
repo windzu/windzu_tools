@@ -22,7 +22,7 @@ sys.path.append("../../")
 from utils.get_frame import GetFrame
 from utils.save_camera_config import save_camera_config
 from utils.parse_camera_config import parse_camera_config
-from common.camera_common import ChessboardInfo
+from common.chessboard_info import ChessboardInfo
 from common.gui import GUI
 from mono_calibration_node import MonoCalibrationNode
 
@@ -54,7 +54,9 @@ class MonoCalibrationGUI(GUI):
     def set_param_callback(self):
         (camera_id, chessboard_size, square_size) = self.__get_params_from_gui()
         camera_info = self.camera_info_dict[camera_id]
-        get_frame = GetFrame(input_mode=camera_info.input_mode, device_name=camera_info.device_name, ros_topic=camera_info.ros_topic)
+        get_frame = GetFrame(
+            input_mode=camera_info.input_mode, device_name=camera_info.device_name, ros_topic=camera_info.ros_topic
+        )
         chessboard_info = ChessboardInfo(n_cols=chessboard_size[0], n_rows=chessboard_size[1], square_size=square_size)
         self.node = MonoCalibrationNode(get_frame=get_frame, chessboard_info=chessboard_info, camera_info=camera_info)
         # echo result
@@ -89,11 +91,13 @@ class MonoCalibrationGUI(GUI):
 
     def __parse_files_init(self):
         """按需解析配置文件，将其实例化为类对象
-                本次需要解析文件：
-                    相机配置文件
-                """
+        本次需要解析文件：
+            相机配置文件
+        """
         print("*** parse files init ***")
-        self.camera_id_list, self.camera_info_dict, self.camera_raw_config_dict = parse_camera_config(self.camera_config_path)
+        self.camera_id_list, self.camera_info_dict, self.camera_raw_config_dict = parse_camera_config(
+            self.camera_config_path
+        )
 
     def __gui_init(self):
         # create root window
@@ -176,4 +180,3 @@ class MonoCalibrationGUI(GUI):
         chessboard_size = [int(x) for x in self.chessboard_size_combobox.get().split("x")]
         square_size = double(self.chessboard_square_size_combobox.get())
         return (camera_id, chessboard_size, square_size)
-

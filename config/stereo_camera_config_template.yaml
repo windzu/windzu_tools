@@ -1,0 +1,64 @@
+/camera/master_camera:
+  camera_model: pinhole
+  device_name: /dev/video0
+  distortion_coefficients:
+  - -1.060344578603661
+  - -0.5228987492310919
+  - 0.050769352018872727
+  - -0.009229458022771846
+  - 4.696769677173428
+  imu_to_camera_rotation_offset_xyz:
+  - 0.0
+  - 0.0
+  - 0.0
+  imu_to_camera_translation_xyz:
+  - 0.0
+  - 0
+  - 0
+  input_mode: ros_topic
+  intrinsics_matrix:
+  - 2489.723557144642
+  - 0.0
+  - 958.1662152010193
+  - 0.0
+  - 2482.48792033355
+  - 532.6364144799634
+  - 0.0
+  - 0.0
+  - 1.0
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /master_publisher/image_raw/compressed
+/camera/slaver_camera:
+  camera_model: pinhole
+  device_name: /dev/video0
+  distortion_coefficients:
+  - -1.060344578603661
+  - -0.5228987492310919
+  - 0.050769352018872727
+  - -0.009229458022771846
+  - 4.696769677173428
+  imu_to_camera_rotation_offset_xyz:
+  - 0.0
+  - 0.0
+  - 0.0
+  imu_to_camera_translation_xyz:
+  - 0.0
+  - 0
+  - 0
+  input_mode: ros_topic
+  intrinsics_matrix:
+  - 2489.723557144642
+  - 0.0
+  - 958.1662152010193
+  - 0.0
+  - 2482.48792033355
+  - 532.6364144799634
+  - 0.0
+  - 0.0
+  - 1.0
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /slaver_publisher/image_raw/compressed

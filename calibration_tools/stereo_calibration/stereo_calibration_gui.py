@@ -22,11 +22,9 @@ sys.path.append("../../")
 from utils.get_frame import GetFrame
 from utils.save_camera_config import save_camera_config
 from utils.parse_camera_config import parse_camera_config
-from common.camera_common import ChessboardInfo
+from common.chessboard_info import ChessboardInfo
 from common.gui import GUI
-from calibration_tools.stereo_calibration.stereo_calibration_node import (
-    StereoCalibrationNode,
-)
+from stereo_calibration_node import StereoCalibrationNode
 
 
 # StereoCalibrationGUI
@@ -81,8 +79,8 @@ class StereoCalibrationGUI(GUI):
         )
         self.node = StereoCalibrationNode(
             master_get_frame=master_get_frame,
-            master_camera_info=master_camera_info,
             slaver_get_frame=slaver_get_frame,
+            master_camera_info=master_camera_info,
             slaver_camera_info=slaver_camera_info,
             chessboard_info=chessboard_info,
         )
@@ -97,7 +95,8 @@ class StereoCalibrationGUI(GUI):
             return
         self.node.start()
         # echo result
-        self.node.camera_info.echo()
+        self.node.master_camera_info.echo()
+        self.node.slaver_camera_info.echo()
 
     def show_result_callback(self):
         print("show result")

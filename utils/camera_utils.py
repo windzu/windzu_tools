@@ -13,269 +13,8 @@ import numpy as np
 import cv2
 import sys
 
-sys.path.append("..")
-from common.camera_common import CameraModel, Patterns, InfoCheckLevel
-
-
-def parse_cameras_config(config_path):
-    """读取配置文件，获得各个相机的参数
-    只有camera_id存储与list中,其他的存储为字典,字典中的key为相机id,value为相机参数
-    Return:
-        camera_id_list (list): 相机配置编号
-        camera_config_dict (dict): 解析格式后的配置,key为参数名,value为dict,其key为相机id,value为相机参数
-        camera_raw_config_dict (dict): yaml直接load的原始格式,用于更新参数并存储
-    """
-    camera_config_path = config_path
-    with open(camera_config_path, "r") as f:
-        camera_raw_config_dict = yaml.load(f)
-
-    def prase_camera_model(camera_config):
-        return camera_config["camera_model"]
-
-    def parse_input_mode(camera_config):
-        return camera_config["input_mode"]
-
-    def parse_device_name(camera_config):
-        return camera_config["device_name"]
-
-    def parse_ros_topic(camera_config):
-        return camera_config["ros_topic"]
-
-    def parse_resolution(camera_config):
-        return camera_config["resolution"]
-
-    def parse_intrinsics_matrix(camera_config):
-        if "intrinsics_matrix" in camera_config.keys() and camera_config["intrinsics_matrix"] is not None:
-            intrinsics_matrix = camera_config["intrinsics_matrix"]
-            intrinsics_matrix = np.array(intrinsics_matrix, dtype=np.float32)
-            intrinsics_matrix = intrinsics_matrix.reshape(3, 3)
-            return intrinsics_matrix
-        else:
-            return None
-
-    def parse_distortion_coefficients(camera_config):
-        if "distortion_coefficients" in camera_config.keys() and camera_config["distortion_coefficients"] is not None:
-            distortion_coefficients = camera_config["distortion_coefficients"]
-            distortion_coefficients = np.array(distortion_coefficients, dtype=np.float32)
-            return distortion_coefficients
-        else:
-            return None
-
-    def parse_scale_xy(camera_config):
-        if "scale_xy" in camera_config.keys():
-            scale_xy = camera_config["scale_xy"]
-            return scale_xy
-        else:
-            return None
-
-    def parse_shift_xy(camera_config):
-        if "shift_xy" in camera_config.keys():
-            shift_xy = camera_config["shift_xy"]
-            return shift_xy
-        else:
-            return None
-
-    def parse_mask_size(camera_config):
-        if "mask_size" in camera_config.keys() and camera_config["mask_size"] is not None:
-            mask_size = camera_config["mask_size"]
-            return mask_size
-        else:
-            return None
-
-    def parse_mask(camera_config, mask_size):
-        if mask_size is None:
-            return None
-        mask = np.zeros((mask_size[1], mask_size[0]), np.uint8)
-        if "mask" in camera_config.keys() and camera_config["mask"] is not None:
-            mask_polygon_corner_points = camera_config["mask"]
-            mask_polygon_corner_points = np.array(mask_polygon_corner_points, np.int32)
-            mask_polygon_corner_points = mask_polygon_corner_points.reshape((-1, 1, 2))
-            mask = cv2.fillPoly(mask, [mask_polygon_corner_points], 255)
-        else:
-            mask = None
-        return mask
-
-    def parse_ploygon_corner_points(camera_config):
-        if "mask" in camera_config.keys() and camera_config["mask"] is not None:
-            mask_polygon_corner_points = camera_config["mask"]
-        else:
-            mask_polygon_corner_points = None
-        return mask_polygon_corner_points
-
-    def parse_homography_matrix(camera_config):
-        if "homography_matrix" in camera_config.keys() and camera_config["homography_matrix"] is not None:
-            homography_matrix = camera_config["homography_matrix"]
-            homography_matrix = np.array(homography_matrix, dtype=np.float32)
-            homography_matrix = homography_matrix.reshape(3, 3)
-            return homography_matrix
-        else:
-            return None
-
-    def parse_imu_to_camera_translation(camera_config):
-        if "imu_to_camera_translation" in camera_config.keys():
-            imu_to_camera_translation_list = camera_config["imu_to_camera_translation"]
-            return imu_to_camera_translation_list
-        else:
-            return None
-
-    def parse_imu_to_camera_rotation_offset(camera_config):
-        if "imu_to_camera_rotation_offset" in camera_config.keys():
-            imu_to_camera_rotation_offset_list = camera_config["imu_to_camera_rotation_offset"]
-            return imu_to_camera_rotation_offset_list
-        else:
-            return None
-
-    camera_id_list = []
-    camera_model_dict = {}
-    input_mode_dict = {}
-    device_name_dict = {}
-    ros_topic_dict = {}
-    resolution_dict = {}
-    intrinsics_matrix_dict = {}
-    distortion_coefficients_dict = {}
-    scale_xy_dict = {}
-    shift_xy_dict = {}
-    mask_size_dict = {}
-    mask_dict = {}
-    mask_ploygon_corner_points_dict = {}  # 存储mask的多边形角点
-    homography_matrix_dict = {}
-    imu_to_camera_translation_dict = {}
-    imu_to_camera_rotation_offset_dict = {}
-
-    for key, value in camera_raw_config_dict.items():
-        camera_id_list.append(key)
-        camera_model_dict[key] = prase_camera_model(value)
-        input_mode_dict[key] = parse_input_mode(value)
-        device_name_dict[key] = parse_device_name(value)
-        ros_topic_dict[key] = parse_ros_topic(value)
-        resolution_dict[key] = parse_resolution(value)
-        intrinsics_matrix_dict[key] = parse_intrinsics_matrix(value)
-        distortion_coefficients_dict[key] = parse_distortion_coefficients(value)
-        scale_xy_dict[key] = parse_scale_xy(value)
-        shift_xy_dict[key] = parse_shift_xy(value)
-        mask_size_dict[key] = parse_mask_size(value)  # 必须先解析size，再解析mask(因为构建mask需要size)
-        mask_dict[key] = parse_mask(value, mask_size_dict[key])
-        mask_ploygon_corner_points_dict[key] = parse_ploygon_corner_points(value)
-        homography_matrix_dict[key] = parse_homography_matrix(value)
-        imu_to_camera_translation_dict[key] = parse_imu_to_camera_translation(value)  # x y z 方向的平移量
-        imu_to_camera_rotation_offset_dict[key] = parse_imu_to_camera_rotation_offset(value)  # 围绕相机坐标系下xyz三个轴的细微旋转量，弧度制
-
-    camera_config_dict = {
-        "camera_model_dict": camera_model_dict,
-        "input_mode_dict": input_mode_dict,
-        "device_name_dict": device_name_dict,
-        "ros_topic_dict": ros_topic_dict,
-        "resolution_dict": resolution_dict,
-        "intrinsics_matrix_dict": intrinsics_matrix_dict,
-        "distortion_coefficients_dict": distortion_coefficients_dict,
-        "scale_xy_dict": scale_xy_dict,
-        "shift_xy_dict": shift_xy_dict,
-        "mask_size_dict": mask_size_dict,
-        "mask_dict": mask_dict,
-        "mask_ploygon_corner_points_dict": mask_ploygon_corner_points_dict,
-        "homography_matrix_dict": homography_matrix_dict,
-        "imu_to_camera_translation_dict": imu_to_camera_translation_dict,
-        "imu_to_camera_rotation_offset_dict": imu_to_camera_rotation_offset_dict,
-    }
-
-    return camera_id_list, camera_config_dict, camera_raw_config_dict
-
-
-def save_camera_config(camera_config_path, camera_id_list, camera_config_dict, camera_raw_config_dict):
-    """
-    保存camera配置
-    Args:
-        camera_config_path (str): camera配置路径
-        camera_config_dict (dict): camera配置字典
-        camera_raw_config_dict (dict): camera原始格式配置字典
-    """
-
-    def serialize_intrinsics_matrix(intrinsics_matrix):
-        if intrinsics_matrix is None or len(intrinsics_matrix) != 3:
-            return None
-        else:
-            return intrinsics_matrix.flatten().tolist()
-
-    def serialize_distortion_coefficients(distortion_coefficients):
-        if distortion_coefficients is None or len(distortion_coefficients) < 4:
-            return None
-        else:
-            return distortion_coefficients.flatten().tolist()
-
-    def serialize_mask_size(mask_size):
-        if mask_size is None:
-            return None
-        else:
-            return np.array(mask_size).astype(np.int32).flatten().tolist()
-
-    def serialize_mask(mask_ploygon_corner_points):
-        if mask_ploygon_corner_points is None:
-            return None
-        else:
-            return mask_ploygon_corner_points
-
-    def serialize_homography_matrix(homography_matrix):
-        if homography_matrix is None or len(homography_matrix) != 3:
-            return None
-        else:
-            return homography_matrix.flatten().tolist()
-
-    for camera_id in camera_id_list:
-
-        intrinsics_matrix = camera_config_dict["intrinsics_matrix_dict"][camera_id]
-        if intrinsics_matrix is not None:
-            camera_raw_config_dict[camera_id]["intrinsics_matrix"] = serialize_intrinsics_matrix(intrinsics_matrix)
-        else:
-            print("[ save_camera_config ] intrinsics_matrix is None")
-
-        distortion_coefficients = camera_config_dict["distortion_coefficients_dict"][camera_id]
-        if distortion_coefficients is not None:
-            camera_raw_config_dict[camera_id]["distortion_coefficients"] = serialize_distortion_coefficients(distortion_coefficients)
-        else:
-            print("[ save_camera_config ] distortion_coefficients is None")
-
-        # scale_xy 和 shift_xy 只针对fisheye需要
-        # scale_xy
-        scale_xy = camera_config_dict["scale_xy_dict"][camera_id]
-        if scale_xy is not None:
-            camera_raw_config_dict[camera_id]["scale_xy"] = scale_xy
-        else:
-            print("[ save_camera_config ] scale_xy is None")
-
-        # shift_xy
-        shift_xy = camera_config_dict["shift_xy_dict"][camera_id]
-        if shift_xy is not None:
-            camera_raw_config_dict[camera_id]["shift_xy"] = shift_xy
-        else:
-            print("[ save_camera_config ] shift_xy is None")
-
-        # mask_size mask homography_matrix_dict只针对环视拼接需要
-        # mask_size
-        mask_size = camera_config_dict["mask_size_dict"][camera_id]
-        mask_size_ret = serialize_mask_size(mask_size)
-        if mask_size_ret is not None:
-            camera_raw_config_dict[camera_id]["mask_size"] = mask_size_ret
-        else:
-            print("[ save_camera_config ] mask_size is None")
-        # mask
-        # mask = camera_config_dict["mask_dict"][camera_id]
-        mask_ploygon_corner_points = camera_config_dict["mask_ploygon_corner_points_dict"][camera_id]
-        mask_ret = serialize_mask(mask_ploygon_corner_points)
-        if mask_ret is not None:
-            camera_raw_config_dict[camera_id]["mask"] = mask_ret
-        else:
-            print("[ save_camera_config ] mask is None")
-
-        homography_matrix = camera_config_dict["homography_matrix_dict"][camera_id]
-        homography_matrix_ret = serialize_homography_matrix(homography_matrix)
-        if homography_matrix_ret is not None:
-            camera_raw_config_dict[camera_id]["homography_matrix"] = homography_matrix_ret
-        else:
-            print("[ save_camera_config ] homography_matrix is None")
-
-    with open(camera_config_path, "w") as f:
-        yaml.dump(camera_raw_config_dict, f, default_flow_style=False)
-        return True
+sys.path.append("../")
+from common.enum_common import CameraModel, Patterns, InfoCheckLevel
 
 
 def camera_info_check(camera_info, info_check_level):
@@ -284,7 +23,7 @@ def camera_info_check(camera_info, info_check_level):
         - camera_model
         - resolution
     2. ADVANCED: 检查相机内参和畸变系数,如果是鱼眼还需要检查scale_xy和shift_xy
-        - intrinsics_matrix 
+        - intrinsics_matrix
         - distortion_coefficients
         * scale_xy
         * shift_xy
@@ -402,15 +141,14 @@ def camera_info_check(camera_info, info_check_level):
 
 def calculate_cameras_mask(front_frame, left_frame, right_frame, back_frame, mask_size):
     """计算所有相机的mask,每次启动时候计算一次
-        1. 首先获取同一时刻所有相机进行单应性变换后的帧，分为 front, left, right, back
-        2. 通过转灰度后,根据阈值过滤掉不需要的部分(front保留最上部分,left保留最左部分...),得到初步的mask
-        3. 通过bitwise_and计算相邻两个方向的初步mask相交的拐角(因为有视角重叠，所以必然有相交部分),将相交部分拟合为一个矩形，得到靠内部的角点
-        4. 找到最靠外的角点,以该角点为基准,连接目标图的四个拐角,得到四个梯形mask
-        """
+    1. 首先获取同一时刻所有相机进行单应性变换后的帧，分为 front, left, right, back
+    2. 通过转灰度后,根据阈值过滤掉不需要的部分(front保留最上部分,left保留最左部分...),得到初步的mask
+    3. 通过bitwise_and计算相邻两个方向的初步mask相交的拐角(因为有视角重叠，所以必然有相交部分),将相交部分拟合为一个矩形，得到靠内部的角点
+    4. 找到最靠外的角点,以该角点为基准,连接目标图的四个拐角,得到四个梯形mask
+    """
 
     def get_corner_mask(direction0, frame0, direction1, frame1, position="A", mask_size=None):
-        """获取该拐角重叠区域的countour 以及靠内部的点（用于与图像拐角连线进行分割）
-            """
+        """获取该拐角重叠区域的countour 以及靠内部的点（用于与图像拐角连线进行分割）"""
 
         def get_threshold_mask(direction, frame, mask_size):
             gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -477,9 +215,15 @@ def calculate_cameras_mask(front_frame, left_frame, right_frame, back_frame, mas
         elif position == "D":
             return corner_counter, [x + w, y]
 
-    _, A_corner_mask_point = get_corner_mask("front", front_frame, "left", left_frame, position="A", mask_size=mask_size)
-    _, B_corner_mask_point = get_corner_mask("front", front_frame, "right", right_frame, position="B", mask_size=mask_size)
-    _, C_corner_mask_point = get_corner_mask("back", back_frame, "right", right_frame, position="C", mask_size=mask_size)
+    _, A_corner_mask_point = get_corner_mask(
+        "front", front_frame, "left", left_frame, position="A", mask_size=mask_size
+    )
+    _, B_corner_mask_point = get_corner_mask(
+        "front", front_frame, "right", right_frame, position="B", mask_size=mask_size
+    )
+    _, C_corner_mask_point = get_corner_mask(
+        "back", back_frame, "right", right_frame, position="C", mask_size=mask_size
+    )
     _, D_corner_mask_point = get_corner_mask("back", back_frame, "left", left_frame, position="D", mask_size=mask_size)
 
     print("A_corner_mask_point:", A_corner_mask_point)
@@ -536,7 +280,7 @@ def calculate_cameras_mask(front_frame, left_frame, right_frame, back_frame, mas
 
 
 class PointSelector(object):
-    """ 通过鼠标从opencv显示窗口中选择点
+    """通过鼠标从opencv显示窗口中选择点
     - press `d` to delete the last points
     - press `q` to quit
     - press `Enter` to confirm
@@ -633,4 +377,3 @@ class PointSelector(object):
         new_mask = cv2.bitwise_and(new_image, new_image, mask=mask)
         cv2.addWeighted(image, 1.0, new_mask, 0.5, 0.0, image)
         return image
-

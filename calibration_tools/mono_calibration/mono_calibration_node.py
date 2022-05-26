@@ -39,27 +39,22 @@ class MonoCalibrationNode:
         get_frame,
         chessboard_info,
         camera_info,
-        calibrator_function_flags=CalibratorFunctionFlags(),
-        calibrator_target_threshold=CalibratorTargetThreshold(),
     ):
         self.get_frame = get_frame
         self.chessboard_info = chessboard_info
         self.camera_info = camera_info
 
-        self.calibrator_function_flags = calibrator_function_flags
-        self.calibrator_target_threshold = calibrator_target_threshold
-
         self.calibrator = None
 
     def start(self):
+        """开始标定,对应gui中的start按钮"""
+
         def on_trackbar(alpha_slider):
             pass
 
         self.calibrator = MonoCalibrator(
             chessboard_info=self.chessboard_info,
             camera_info=self.camera_info,
-            calibrator_function_flags=self.calibrator_function_flags,
-            calibrator_target_threshold=self.calibrator_target_threshold,
         )
         print("*******start collect sample*******")
         window_name = "collecting sample"
@@ -75,20 +70,20 @@ class MonoCalibrationNode:
         cv2.createTrackbar(y_progress_trackbar_name, window_name, 0, slider_max, on_trackbar)
         cv2.createTrackbar(size_progress_trackbar_name, window_name, 0, slider_max, on_trackbar)
         cv2.createTrackbar(skew_progress_trackbar_name, window_name, 0, slider_max, on_trackbar)
-        while True:
+        while self.calibrator.calibrated is False:
             frame = self.get_frame.read()
-            mono_handle_result = self.calibrator.handle_frame(frame)
-            cv2.imshow(window_name, mono_handle_result.resized_img_with_corners)
-            if mono_handle_result.params is None:
+            ok, mono_handle_result = self.calibrator.handle_frame(frame)
+            cv2.imshow(window_name, mono_handle_result.show_img)
+            if ok is False:
                 x_progress = 0
                 y_progress = 0
                 size_progress = 0
                 skew_progress = 0
             else:
-                x_progress = int(mono_handle_result.params[0][3] * 100)
-                y_progress = int(mono_handle_result.params[1][3] * 100)
-                size_progress = int(mono_handle_result.params[2][3] * 100)
-                skew_progress = int(mono_handle_result.params[3][3] * 100)
+                x_progress = int(mono_handle_result.progress[0][3] * 100)
+                y_progress = int(mono_handle_result.progress[1][3] * 100)
+                size_progress = int(mono_handle_result.progress[2][3] * 100)
+                skew_progress = int(mono_handle_result.progress[3][3] * 100)
             cv2.setTrackbarPos(x_progress_trackbar_name, window_name, x_progress)
             cv2.setTrackbarPos(y_progress_trackbar_name, window_name, y_progress)
             cv2.setTrackbarPos(size_progress_trackbar_name, window_name, size_progress)
@@ -98,15 +93,17 @@ class MonoCalibrationNode:
                 cv2.destroyAllWindows()
                 return
             if key == 13:  # enter
-                self.calibrator.goodenough = True
-            if self.calibrator.goodenough is True:
+                print("*******start calibrate*******")
+                self.calibrator._do_calibration()
+                print("*******calibrate finished*******")
+                self.calibrator.calibrated = True
+            if self.calibrator.calibrated is True:
                 cv2.destroyAllWindows()
                 break
-        print("*******start calibrate*******")
-        self.calibrator._do_calibration()
-        print("*******calibrate finished*******")
+        cv2.destroyAllWindows()
 
     def show_result(self):
+        """显示标定结果,对应gui中的show result按钮"""
         info_check_level = InfoCheckLevel.COMPLETED
         self.camera_info.info_check(info_check_level)
 
@@ -123,8 +120,8 @@ class MonoCalibrationNode:
         self.calibrator.calibrated = True
         while True:
             frame = self.get_frame.read()
-            mono_handle_result = self.calibrator.handle_frame(frame)
-            cv2.imshow("mono_handle_result", mono_handle_result.resized_img_with_corners)
+            ret, mono_handle_result = self.calibrator.handle_frame(frame)
+            cv2.imshow("mono_handle_result", mono_handle_result.show_img)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 cv2.destroyAllWindows()
                 break

@@ -1,0 +1,12 @@
+<launch>                                                                        
+    <node pkg="image_publisher" type="image_publisher" name="master_publisher"
+            args="$(env PWD)/master.jpg" >
+        <param name="frame_id" value="master" />
+        <param name="publish_rate" value="1" />
+    </node>
+    <node pkg="image_publisher" type="image_publisher" name="slaver_publisher"
+        args="$(env PWD)/slaver.jpg" >
+        <param name="frame_id" value="slaver" />
+        <param name="publish_rate" value="1" />
+    </node>
+</launch>
