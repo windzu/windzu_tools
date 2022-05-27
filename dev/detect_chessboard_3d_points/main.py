@@ -1,7 +1,7 @@
 """
 Author: windzu
-Date: 2022-05-27 17:57:03
-LastEditTime: 2022-05-27 17:58:15
+Date: 2022-05-28 02:09:45
+LastEditTime: 2022-05-28 02:13:33
 LastEditors: windzu
 Description: 
 FilePath: /windzu_tools/dev/detect_chessboard_3d_points/main.py
@@ -16,7 +16,7 @@ import numpy as np
 import rospy
 
 # local
-# sys.path.append("../")
+sys.path.append("../../")
 from common.camera_calibrator import CameraCalibrator, HandleResult
 from common.enum_common import CameraModel, CameraInfoCheckLevel
 from utils.parse_camera_config import parse_camera_config
@@ -27,7 +27,7 @@ from utils.get_frame import GetFrame
 def main():
     rospy.init_node("test")
     camera_config_path = "../../config/mono_camera_config_template.yaml"
-    camera_id = "/camera/imu_to_camera_test"
+    camera_id = "/camera/mono_test"
     camera_id_list, camera_info_dict, camera_raw_config_dict = parse_camera_config(camera_config_path)
     camera_info = camera_info_dict[camera_id]
 
@@ -41,13 +41,19 @@ def main():
     board_cols = 5
     board_rows = 8
     while True:
-        frame = get_frame.get_frame()
+        frame = get_frame.read()
         if frame is None:
             continue
         (ok, corners, resized_img, downsampled_corners, (x_scale, y_scale)) = quick_get_good_corners(
             frame, board_cols, board_rows
         )
-        if ok is False:
+        if ok:
+            cv2.drawChessboardCorners(resized_img, (board_cols, board_rows), downsampled_corners, ok)  # 画棋盘角点
+            cv2.imshow("corners", resized_img)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                cv2.destroyAllWindows()
+                break
+        else:
             continue
 
 
