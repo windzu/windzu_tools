@@ -14,7 +14,7 @@ import cv2
 import sys
 
 sys.path.append("../")
-from common.enum_common import CameraModel, Patterns, InfoCheckLevel
+from common.enum_common import CameraModel, Patterns, CameraInfoCheckLevel
 
 
 def camera_info_check(camera_info, info_check_level):
@@ -109,14 +109,14 @@ def camera_info_check(camera_info, info_check_level):
             return False, camera_info
         return True, camera_info
 
-    if info_check_level == InfoCheckLevel.BASE:
+    if info_check_level == CameraInfoCheckLevel.BASE:
         return base_check(camera_info)
-    elif info_check_level == InfoCheckLevel.ADVANCED:
+    elif info_check_level == CameraInfoCheckLevel.ADVANCED:
         ret, _ = base_check(camera_info)
         if not ret:
             return False, camera_info
         return advanced_check(camera_info)
-    elif info_check_level == InfoCheckLevel.COMPLETED:
+    elif info_check_level == CameraInfoCheckLevel.COMPLETED:
         ret, _ = base_check(camera_info)
         if not ret:
             return False, camera_info
@@ -124,7 +124,7 @@ def camera_info_check(camera_info, info_check_level):
         if not ret:
             return False, camera_info
         return completed_check(camera_info)
-    elif info_check_level == InfoCheckLevel.SURROUND_SPECIAL:
+    elif info_check_level == CameraInfoCheckLevel.SURROUND_SPECIAL:
         ret, _ = base_check(camera_info)
         if not ret:
             return False, camera_info

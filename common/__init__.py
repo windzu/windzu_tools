@@ -1,6 +1,6 @@
 from .camera_info import CameraInfo
 from .chessboard_info import ChessboardInfo
-from .enum_common import CameraModel, FrameInputMode, Patterns, InfoCheckLevel
+from .enum_common import CameraModel, FrameInputMode, Patterns, CameraInfoCheckLevel
 from .gui import GUI
 from .camera_calibrator import HandleResult, CameraCalibrator
 from .camera_common import CalibratorFunctionFlags

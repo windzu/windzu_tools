@@ -15,7 +15,7 @@ import numpy as np
 
 # local
 sys.path.append("../")
-from common.enum_common import CameraModel, FrameInputMode, Patterns, CameraInfoCheckLevel
+from common.enum_common import CameraModel, CameraInfoCheckLevel
 
 
 class CameraInfo:

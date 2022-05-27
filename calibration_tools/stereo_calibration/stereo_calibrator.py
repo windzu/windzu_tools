@@ -15,7 +15,7 @@ import sys
 # sys.path.append("../")
 from common.enum_common import Patterns
 from common.camera_calibrator import CameraCalibrator, HandleResult
-from common.enum_common import CameraModel, InfoCheckLevel
+from common.enum_common import CameraModel
 from utils.get_corners import get_all_good_corners_from_images, quick_get_good_corners
 
 
@@ -197,6 +197,8 @@ class StereoCalibrator(CameraCalibrator):
         slaver_corners = get_all_good_corners_from_images(slaver_images, board_cols, board_rows, checkerboard_flags)
         self._do_calibration_from_corners(master_corners, slaver_corners, calibration_flags)
         print("reproj error:", self.reproj_error)
+        print("self.R:", self.R)
+        print("self.T:", self.T)
         print("*******calibrate finished*******")
 
     def _do_calibration_from_corners(self, master_corners, slaver_corners, calibrate_flags=None):
@@ -226,6 +228,23 @@ class StereoCalibrator(CameraCalibrator):
                 criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 1, 1e-5),
                 flags=cv2.CALIB_FIX_INTRINSIC,
             )
+            R1, R2, P1, P2, Q, validPixROI1, validPixROI2 = cv2.stereoRectify(
+                self.master_camera_info.intrinsics_matrix,
+                self.master_camera_info.distortion_coefficients,
+                self.slaver_camera_info.intrinsics_matrix,
+                self.slaver_camera_info.distortion_coefficients,
+                (img_width, img_height),
+                self.R,
+                self.T,
+                alpha=1,
+            )
+            # debug
+            print("R1", R1)
+            print("R2", R2)
+            print("P1", P1)
+            print("P2", P2)
+            print("master first corner without undistort:", master_corners[0][0])
+            print("slaver first corner without undistort:", slaver_corners[0][0])
         elif self.master_camera_info.camera_model == CameraModel.FISHEYE:
             (
                 self.reproj_error,

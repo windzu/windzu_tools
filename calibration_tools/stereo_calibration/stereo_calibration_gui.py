@@ -105,15 +105,22 @@ class StereoCalibrationGUI(GUI):
     def save_callback(self):
         if self.node is None:
             raise Exception("please set params first!")
-        camera_id = self.master_camera_id_combobox.get()
-        self.camera_info_dict[camera_id] = self.node.camera_info
-        save_camera_config(
-            self.camera_config_path,
-            camera_id,
-            self.camera_info_dict,
-            self.camera_raw_config_dict,
-        )
-        print("save success")
+        master_camera_id = self.master_camera_id_combobox.get()
+        slaver_camera_id = self.slaver_camera_id_combobox.get()
+        print(master_camera_id + " to " + slaver_camera_id + " R T :")
+
+        print("R: ", self.node.calibrator.R)
+        print("T: ", self.node.calibrator.T)
+
+        print("print sucess")
+        # self.camera_info_dict[camera_id] = self.node.camera_info
+        # save_camera_config(
+        #     self.camera_config_path,
+        #     camera_id,
+        #     self.camera_info_dict,
+        #     self.camera_raw_config_dict,
+        # )
+        # print("save success")
 
     def exit_callback(self):
         cv2.destroyAllWindows()

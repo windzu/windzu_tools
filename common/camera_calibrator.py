@@ -15,7 +15,7 @@ import sys
 
 # local
 sys.path.append("../")
-from common.enum_common import Patterns, CameraModel, InfoCheckLevel
+from common.enum_common import CameraModel
 from common.camera_common import CalibratorFunctionFlags
 
 
@@ -68,4 +68,5 @@ class CameraCalibrator:
                 np.eye(3, 3),
                 new_mat,
             )
-        return src
+        else:
+            raise ValueError("camera_model is not supported")

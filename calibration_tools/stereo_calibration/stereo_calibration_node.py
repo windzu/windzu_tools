@@ -79,9 +79,9 @@ class StereoCalibrationNode:
         cv2.destroyAllWindows()
 
     def show_result(self):
-        camera_info_check_level = CameraInfoCheckLevel.COMPLETED
+        camera_info_check_level = CameraInfoCheckLevel.STEREO_CALIBRATION
         self.master_camera_info.info_check(camera_info_check_level)
-        self.slaver_camera_info.info_check(camera_info_check_level)
+        # self.slaver_camera_info.info_check(camera_info_check_level)
 
         print("*******start show result*******")
         if self.calibrator is None:
@@ -98,7 +98,8 @@ class StereoCalibrationNode:
             master_frame = self.master_get_frame.read()
             slaver_frame = self.slaver_get_frame.read()
             ok, stereo_handle_result = self.calibrator.handle_frame(master_frame, slaver_frame)
-            cv2.imshow("mono_handle_result", mono_handle_result.resized_img_with_corners)
+            cv2.imshow("master", stereo_handle_result.show_master_img)
+            cv2.imshow("slaver", stereo_handle_result.show_slaver_img)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 cv2.destroyAllWindows()
                 break

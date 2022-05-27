@@ -15,7 +15,7 @@ import cv2
 import sys
 
 sys.path.append("../")
-from common.enum_common import CameraModel, FrameInputMode, InfoCheckLevel
+from common.enum_common import CameraModel, FrameInputMode
 from common.camera_info import CameraInfo
 
 
@@ -127,8 +127,7 @@ def parse_camera_config(config_path):
         return mask
 
     def parse_ploygon_corner_points(camera_config):
-        """将mask的四个角点坐标转换为角点坐标单独存储
-        """
+        """将mask的四个角点坐标转换为角点坐标单独存储"""
         if "mask" in camera_config.keys() and camera_config["mask"] is not None:
             mask_polygon_corner_points = camera_config["mask"]
         else:
@@ -199,4 +198,3 @@ def parse_camera_config(config_path):
         camera_info_dict[key] = camera_info
 
     return camera_id_list, camera_info_dict, camera_raw_config_dict
-
