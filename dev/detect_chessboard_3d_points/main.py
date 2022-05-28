@@ -14,32 +14,91 @@ import sys
 import math
 import numpy as np
 import rospy
+from sensor_msgs import point_cloud2
+from sensor_msgs.msg import PointCloud2, PointField
 
 # local
 sys.path.append("../../")
 from common.camera_calibrator import CameraCalibrator, HandleResult
 from common.enum_common import CameraModel, CameraInfoCheckLevel
+from common.chessboard_info import ChessboardInfo
 from utils.parse_camera_config import parse_camera_config
 from utils.get_corners import get_all_good_corners_from_images, quick_get_good_corners
 from utils.get_frame import GetFrame
 
 
+def convert_board_to_4d(board_cols, board_rows, square_size):
+    """
+    将棋盘格转换为4维空间中的坐标
+    """
+
+    corners_4d = np.array(
+        [[[j * square_size], [i * square_size], [0.0], [1]] for i in range(board_rows) for j in range(board_cols)],
+        dtype=np.float32,
+    )
+    print("corners_4d shape: ", corners_4d.shape)
+    return corners_4d
+
+
+def calculate_chessboard_corners_3d_points(rvecs, tvecs, corners_4d):
+    """从棋盘世界坐标系变换到相机坐标系
+
+    Args:
+        rvecs (_type_): 旋转向量
+        tvecs (_type_): 平移向量
+        corners_4d (_type_): 棋盘格子的4维坐标
+    """
+
+    def convert_rvecs_tvecs_to_transform_matrix(rvecs, tvecs):
+        """将rvecs和tvecs转换为4x4变换矩阵"""
+        world_to_camera_tranformation_matrix = np.eye(4)
+        rotation_matrix = cv2.Rodrigues(rvecs)[0]
+        world_to_camera_tranformation_matrix[:3, :3] = rotation_matrix
+
+        world_to_camera_tranformation_matrix[:3, 3] = tvecs.reshape(3)
+
+        return world_to_camera_tranformation_matrix
+
+    world_to_camera_tranformation_matrix = convert_rvecs_tvecs_to_transform_matrix(rvecs, tvecs)
+
+    point_3d_list = []
+    for i in range(corners_4d.shape[0]):
+        point_3d = np.dot(world_to_camera_tranformation_matrix, corners_4d[i])
+        point_3d_list.append(point_3d)
+
+    # convert list to numpy array
+    point_3d_array = np.array(point_3d_list)
+    point_3d_array = np.reshape(point_3d_array, (point_3d_array.shape[0], point_3d_array.shape[1]))
+    # drop the last column
+    point_3d_array = point_3d_array[:, :3]
+    return point_3d_array
+
+
 def main():
     rospy.init_node("test")
+    # 常量设置
+    board_cols = 5
+    board_rows = 8
+    square_size = 21.4  # mm
     camera_config_path = "../../config/mono_camera_config_template.yaml"
     camera_id = "/camera/mono_test"
     camera_id_list, camera_info_dict, camera_raw_config_dict = parse_camera_config(camera_config_path)
     camera_info = camera_info_dict[camera_id]
-
+    chessboard_info = ChessboardInfo(
+        n_cols=board_cols,
+        n_rows=board_rows,
+        square_size=square_size,
+    )
     info_check_level = CameraInfoCheckLevel.COMPLETED
     camera_info.info_check(info_check_level)
     get_frame = GetFrame(
         input_mode=camera_info.input_mode, device_name=camera_info.device_name, ros_topic=camera_info.ros_topic
     )
 
-    # 常量设置
-    board_cols = 5
-    board_rows = 8
+    ros_pub = rospy.Publisher("point_cloud2", PointCloud2, queue_size=2)
+
+    corners_4d = convert_board_to_4d(board_cols, board_rows, square_size)
+
     while True:
         frame = get_frame.read()
         if frame is None:
@@ -48,13 +107,49 @@ def main():
             frame, board_cols, board_rows
         )
         if ok:
+            # sovle_pnp
+            ret, rvecs, tvecs = cv2.solvePnP(
+                chessboard_info.BOARD,
+                np.array(corners, dtype=np.float32),
+                camera_info.intrinsics_matrix,
+                camera_info.distortion_coefficients,
+            )
+            if ret:
+                # 计算棋盘格的3d坐标
+                result = calculate_chessboard_corners_3d_points(rvecs, tvecs, corners_4d)
+                # debug
+                print("result: ", result)
+                # convert result to PointCloud2
+                points = np.zeros((result.shape[0], result.shape[1]), dtype=np.float32)
+                for i in range(result.shape[0]):
+                    points[i, :] = result[i, :]
+                # points = result
+                print("point shape: ", points.shape)
+                msg = PointCloud2()
+                msg.header.stamp = rospy.Time().now()
+                msg.header.frame_id = camera_id
+                msg.height = 1
+                msg.width = len(points)
+                print(len(points))
+                msg.fields = [
+                    PointField("x", 0, PointField.FLOAT32, 1),
+                    PointField("y", 4, PointField.FLOAT32, 1),
+                    PointField("z", 8, PointField.FLOAT32, 1),
+                ]
+                msg.is_bigendian = False
+                msg.point_step = 12
+                msg.row_step = msg.point_step * points.shape[0]
+                msg.is_dense = False
+                msg.data = np.asarray(points, np.float32).tostring()
+
+                ros_pub.publish(msg)
+                print("publish point cloud2")
+
             cv2.drawChessboardCorners(resized_img, (board_cols, board_rows), downsampled_corners, ok)  # 画棋盘角点
-            cv2.imshow("corners", resized_img)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                cv2.destroyAllWindows()
-                break
-        else:
-            continue
+        cv2.imshow("corners", resized_img)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            cv2.destroyAllWindows()
+            break
 
 
 if __name__ == "__main__":
