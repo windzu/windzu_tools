@@ -107,10 +107,20 @@ class StereoCalibrationGUI(GUI):
             raise Exception("please set params first!")
         master_camera_id = self.master_camera_id_combobox.get()
         slaver_camera_id = self.slaver_camera_id_combobox.get()
-        print(master_camera_id + " to " + slaver_camera_id + " R T :")
-
+        config_name = master_camera_id + "_to_" + slaver_camera_id
+        print(config_name)
         print("R: ", self.node.calibrator.R)
         print("T: ", self.node.calibrator.T)
+        config_dict = {}
+        R_dict = {"R": self.node.calibrator.R.flatten().tolist()}
+        T_dict = {"T": self.node.calibrator.T.flatten().tolist()}
+        config_dict[config_name] = {
+            "R": self.node.calibrator.R.flatten().tolist(),
+            "T": self.node.calibrator.T.flatten().tolist(),
+        }
+        with open("../../config/tf_config.yaml", "a") as f:
+            yaml.dump(config_dict, f, default_flow_style=False)
+            return True
 
         print("print sucess")
         # self.camera_info_dict[camera_id] = self.node.camera_info
