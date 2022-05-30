@@ -108,14 +108,15 @@ def get_all_good_corners_from_images(images, board_cols, board_rows, checkerboar
     Args:
         images (list): 图像列表
     Returns:
-        goodcorners (list): [ corners... ]
+        all_good_corners (list): [ corners... ],所有检测到的角点
+        corners ;[[ok,corners],...],检测到的角点的原始数据,也包含是否检测到的状态
     """
     corners = [get_good_corners(i, board_cols, board_rows, checkerboard_flags) for i in images]
 
     all_good_corners = [co for (ok, co) in corners if ok]
     if not all_good_corners:
         raise Exception("No corners found in images!")
-    return all_good_corners
+    return all_good_corners, corners
 
 
 def quick_get_good_corners(img, board_cols, board_rows):

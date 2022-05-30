@@ -314,7 +314,7 @@ class MonoCalibrator(CameraCalibrator):
         board_rows = self.chessboard_info.n_rows
         checkerboard_flags = self.calibrator_function_flags.cv2_findChessboardCorners_flags
         calibration_flags = self.calibrator_function_flags
-        all_good_corners = get_all_good_corners_from_images(images, board_cols, board_rows, checkerboard_flags)
+        all_good_corners, corners = get_all_good_corners_from_images(images, board_cols, board_rows, checkerboard_flags)
         self._do_calibration_from_corners(all_good_corners, calibration_flags)
         self.calibrated = True
 

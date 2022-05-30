@@ -48,7 +48,7 @@ class StereoCalibrator(CameraCalibrator):
         self.reproj_error = None
 
         # 一些固定阈值设置
-        self.reproj_error_thresh = 5.0
+        self.reproj_error_thresh = 20
         self.min_samples = 20
 
     def handle_frame(self, master_frame, slaver_frame):
@@ -141,7 +141,7 @@ class StereoCalibrator(CameraCalibrator):
                 stereo_handle_result.show_master_img = master_resized_gray
                 stereo_handle_result.show_slaver_img = slaver_resized_gray
                 stereo_handle_result.progress = int((len(self.stored_data["master_images"]) / self.min_samples) * 100)
-                stereo_handle_result.reproj_error = ret
+                stereo_handle_result.reproj_error = -1
                 return False, stereo_handle_result
 
     def _do_calibration(self):
@@ -154,8 +154,26 @@ class StereoCalibrator(CameraCalibrator):
         board_rows = self.chessboard_info.n_rows
         checkerboard_flags = self.calibrator_function_flags.cv2_findChessboardCorners_flags
         calibration_flags = self.calibrator_function_flags
-        master_corners = get_all_good_corners_from_images(master_images, board_cols, board_rows, checkerboard_flags)
-        slaver_corners = get_all_good_corners_from_images(slaver_images, board_cols, board_rows, checkerboard_flags)
+        master_corners, raw_master_corners = get_all_good_corners_from_images(
+            master_images, board_cols, board_rows, checkerboard_flags
+        )
+        slaver_corners, raw_slaver_corners = get_all_good_corners_from_images(
+            slaver_images, board_cols, board_rows, checkerboard_flags
+        )
+
+        # 是否同时采集到判断
+        master_corners = []
+        slaver_corners = []
+        if len(raw_master_corners) == len(raw_slaver_corners):
+            for i in range(len(raw_master_corners)):
+                if raw_master_corners[i][0] == True and raw_slaver_corners[i][0] == True:
+                    master_corners.append(raw_master_corners[i][1])
+                    slaver_corners.append(raw_slaver_corners[i][1])
+        if len(master_corners) > 0 and len(master_corners) == len(slaver_corners):
+            print("get all good corners")
+        else:
+            print("len of corners is different")
+
         self._do_calibration_from_corners(master_corners, slaver_corners, calibration_flags)
         print("reproj error:", self.reproj_error)
         print("self.R:", self.R)
