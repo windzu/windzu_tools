@@ -21,6 +21,7 @@ from common.enum_common import CameraModel, CameraInfoCheckLevel
 class CameraInfo:
     def __init__(
         self,
+        camera_id,
         input_mode,
         device_name,
         ros_topic,
@@ -38,6 +39,7 @@ class CameraInfo:
         imu_to_camera_rotation_offset_xyz=None,
     ):
         # 确定一下相机图像的输入方式
+        self.camera_id = camera_id
         self.input_mode = input_mode
         self.device_name = device_name
         self.ros_topic = ros_topic

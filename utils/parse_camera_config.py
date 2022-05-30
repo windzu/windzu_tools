@@ -178,6 +178,7 @@ def parse_camera_config(config_path):
         camera_model = prase_camera_model(value)
 
         camera_info = CameraInfo(
+            camera_id=key,
             input_mode=parse_input_mode(value),
             device_name=parse_device_name(value),
             ros_topic=parse_ros_topic(value),

@@ -79,46 +79,7 @@ class StereoCalibrator(CameraCalibrator):
             (slaver_x_scale, slaver_y_scale),
         ) = quick_get_good_corners(slaver_gray, board_cols, board_rows)
 
-        if self.calibrated:
-            # 如果标定是已经完成的,则
-            #   1. 图像去畸变,然后缩放
-            #   2. master角点去畸变,并计算重投影在slaver上的角点
-            #   3. 计算  error
-            #   4. 缩放去畸变后的角点，绘制在缩放且去畸变后的图像上
-            #   5. 返回必要的信息
-            pass
-        #             undistorted_master_gray = self._remap(master_gray, self.__master_camera_info)
-        #             undistorted_slaver_gray = self._remap(slaver_gray, self.__slaver_camera_info)
-        #             if master_x_scale != 1.0 or master_y_scale != 1.0:
-        #                 resized_master_undistorted_gray = cv2.resize(
-        #                     undistorted_master_gray, (master_resized_img.shape[1], master_resized_img.shape[0])
-        #                 )
-        #             if slaver_x_scale != 1.0 or slaver_y_scale != 1.0:
-        #                 resized_slaver_undistorted_gray = cv2.resize(
-        #                     undistorted_slaver_gray, (slaver_resized_img.shape[1], slaver_resized_img.shape[0])
-        #                 )
-        #
-        #             resized_master_undistorted_img = cv2.cvtColor(resized_master_undistorted_gray, cv2.COLOR_GRAY2BGR)
-        #             resized_slaver_undistorted_img = cv2.cvtColor(resized_slaver_undistorted_gray, cv2.COLOR_GRAY2BGR)
-        #
-        #             # 角点校正、缩放、绘制角点
-        #             if master_corners is not None:
-        #                 undistorted_master_corners = self._undistort_points(master_corners, self.__master_camera_info)
-        #                 # 重投影到slaver上
-        #
-        #                 resized_undistorted_corners = undistorted_corners.copy()
-        #                 resized_undistorted_corners[:, :, 0] /= x_scale
-        #                 resized_undistorted_corners[:, :, 1] /= y_scale
-        #                 cv2.drawChessboardCorners(
-        #                     resized_undistorted_img,
-        #                     (board.n_cols, board.n_rows),
-        #                     resized_undistorted_corners,
-        #                     True,
-        #                 )
-        #
-        #                 # debug
-        #             resized_img_with_corners = resized_undistorted_img
-        else:
+        if self.calibrated is False:
             # 如果标定是未完成的,则
             #   1. 绘制快速检测的角点
             #   2. 进行标定并计算重投影误差
