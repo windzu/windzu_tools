@@ -15,19 +15,18 @@ import yaml
 import numpy as np
 import sys
 import tkinter as tk
-from tkinter import ttk  # 导入ttk模块，因为下拉菜单控件在ttk中
+from tkinter import ttk
+
 
 # local
 sys.path.append("../../")
-from utils.get_frame import GetFrame
-from utils.save_camera_config import save_camera_config
-
-# from utils.parse_camera_config import parse_camera_config
-from utils.parse_camera_config_copy import parse_camera_config
-from utils.parse_tf_config import parse_tf_config
-from utils.save_tf_config import save_tf_config
+from common.camera_info import CameraInfo
+from common.tf_info import TFInfo
 from common.chessboard_info import ChessboardInfo
 from common.gui import GUI
+from utils.get_frame import GetFrame
+from utils.save_tf_config import save_tf_config
+
 from stereo_calibration_node import StereoCalibrationNode
 
 
@@ -55,8 +54,22 @@ class StereoCalibrationGUI(GUI):
         self.camera_config_path = camera_config_path
         self.tf_config_path = tf_config_path
         self.node = None
-        self.__parse_files_init()
+
+        # 为填充参数
+        self.camera_id_list = []
+
+        # 未初始化参数
+        self.master_camera_info = None
+        self.slaver_camera_info = None
+        self.master_camera_get_frame = None
+        self.slaver_camera_get_frame = None
+        self.tf_info = None
+        self.chessboard_info = None
+
+        self.__loading_files()
         self.__gui_init()
+        print("[ GUI ] init success")
+        print("************************************************")
 
     def set_param_callback(self):
         (
@@ -65,101 +78,110 @@ class StereoCalibrationGUI(GUI):
             chessboard_size,
             square_size,
         ) = self.__get_params_from_gui()
-        master_camera_info = self.camera_info_dict[master_camera_id]
-        slaver_camera_info = self.camera_info_dict[slaver_camera_id]
-        master_get_frame = GetFrame(
-            input_mode=master_camera_info.input_mode,
-            device_name=master_camera_info.device_name,
-            ros_topic=master_camera_info.ros_topic,
+
+        # camera info init
+        self.master_camera_info = CameraInfo(master_camera_id, self.all_raw_camera_config[master_camera_id])
+        self.slaver_camera_info = CameraInfo(slaver_camera_id, self.all_raw_camera_config[slaver_camera_id])
+
+        # tf info init
+        # tf_id = master_camera_id + "_to_" + slaver_camera_id
+        tf_id = slaver_camera_id + "_to_" + master_camera_id
+        self.tf_info = TFInfo(tf_id)
+
+        # get frame init
+        self.master_camera_get_frame = GetFrame(
+            input_mode=self.master_camera_info.input_mode,
+            device_name=self.master_camera_info.device_name,
+            ros_topic=self.master_camera_info.ros_topic,
         )
-        slaver_get_frame = GetFrame(
-            input_mode=slaver_camera_info.input_mode,
-            device_name=slaver_camera_info.device_name,
-            ros_topic=slaver_camera_info.ros_topic,
+        self.slaver_camera_get_frame = GetFrame(
+            input_mode=self.slaver_camera_info.input_mode,
+            device_name=self.slaver_camera_info.device_name,
+            ros_topic=self.slaver_camera_info.ros_topic,
         )
-        chessboard_info = ChessboardInfo(
+
+        # chessboard info init
+        self.chessboard_info = ChessboardInfo(
             n_cols=chessboard_size[0],
             n_rows=chessboard_size[1],
             square_size=square_size,
         )
+
+        # node init
         self.node = StereoCalibrationNode(
-            master_get_frame=master_get_frame,
-            slaver_get_frame=slaver_get_frame,
-            master_camera_info=master_camera_info,
-            slaver_camera_info=slaver_camera_info,
-            chessboard_info=chessboard_info,
+            master_get_frame=self.master_camera_get_frame,
+            slaver_get_frame=self.slaver_camera_get_frame,
+            master_camera_info=self.master_camera_info,
+            slaver_camera_info=self.slaver_camera_info,
+            tf_info=self.tf_info,
+            chessboard_info=self.chessboard_info,
         )
         # echo result
-        master_camera_info.echo()
-        slaver_camera_info.echo()
-        print("**** set params success ****")
+        self.master_camera_info.echo()
+        self.slaver_camera_info.echo()
+        print("[ GUI ] set params success")
+        print("************************************************")
 
     def start_callback(self):
         if self.node is None:
             print("please set params first!")
             return
         self.node.start()
+        self.master_camera_info = self.node.master_camera_info
+        self.slaver_camera_info = self.node.slaver_camera_info
+        self.tf_info = self.node.tf_info
         # echo result
-        self.node.master_camera_info.echo()
-        self.node.slaver_camera_info.echo()
+        self.master_camera_info.echo()
+        self.slaver_camera_info.echo()
+        self.tf_info.echo()
+        print("[ GUI ] reproj error: {}".format(self.node.reproj_error))
+        print("[ GUI ] start success and complete calibration")
+        print("************************************************")
 
     def show_result_callback(self):
-        print("show result")
+        print("[ GUI ] show result")
         self.node.show_result()
+        print("************************************************")
 
     def save_callback(self):
         if self.node is None:
             raise Exception("please set params first!")
-        master_camera_id = self.master_camera_id_combobox.get()
-        slaver_camera_id = self.slaver_camera_id_combobox.get()
-        config_name = master_camera_id + "_to_" + slaver_camera_id
-        print(config_name)
-        print("R: ", self.node.calibrator.R)
-        print("T: ", self.node.calibrator.T)
 
-        ret = save_tf_config(
-            father_frame_id=master_camera_id,
-            child_frame_id=slaver_camera_id,
-            R=self.node.calibrator.R,
-            T=self.node.calibrator.T,
-            all_tf_info=self.all_tf_info,
-            all_raw_tf_info=self.all_raw_tf_info,
-            tf_config_path=self.tf_config_path,
-        )
+        tf_id = self.tf_info.tf_id
+        if self.all_raw_tf_config is None:
+            self.all_raw_tf_config = dict()
+        self.all_raw_tf_config[tf_id] = self.tf_info.deserialize_tf_config()
 
-        if ret:
-            print("save success")
-            return True
-        else:
-            print("save failed")
-            return False
+        print("[ GUI ] tf_id : ", tf_id)
+        print("[ GUI ] R: ", self.tf_info.R)
+        print("[ GUI ] T: ", self.tf_info.T)
+
+        with open(self.tf_config_path, "w") as f:
+            yaml.dump(self.all_raw_tf_config, f, default_flow_style=False)
+
+        print("************************************************")
 
     def exit_callback(self):
         cv2.destroyAllWindows()
-        self.win.quit()
         self.win.destroy()
-        print("exit success")
+        # exit mainloop
+        self.win.quit()
+        print("[ GUI ] exit success")
+        print("************************************************")
 
-    def __parse_files_init(self):
-        """按需解析配置文件，将其实例化为类对象
-        本次需要解析文件：
-            相机配置文件
-        """
-        print("*** parse files init ***")
-        print("*** 1. parse camera config ***")
-        (
-            self.camera_id_list,
-            self.camera_info_dict,
-            self.camera_raw_config_dict,
-        ) = parse_camera_config(self.camera_config_path)
-        print("*** parse camera config success ***")
+    def __loading_files(self):
+        """读取yaml配置文件"""
+        print("*** start load config files ***")
+        print("*** loading camera config files ***")
+        with open(self.camera_config_path, "r") as f:
+            self.all_raw_camera_config = yaml.load(f)
+        self.camera_id_list = [key for key in self.all_raw_camera_config.keys()]
 
-        print("*** 2. parse tf config ***")
-        (
-            self.all_tf_info,
-            self.all_raw_tf_info,
-        ) = parse_tf_config(self.tf_config_path)
-        print("*** parse tf config success ***")
+        print("*** loading tf config files ***")
+        with open(self.tf_config_path, "r") as f:
+            self.all_raw_tf_config = yaml.load(f)
+
+        print("*** load config files finished ***")
 
     def __gui_init(self):
         # create root window
@@ -208,9 +230,6 @@ class StereoCalibrationGUI(GUI):
         self.save_button = ttk.Button(self.win, text="save", command=self.save_callback)
         self.exit_button = ttk.Button(self.win, text="exit", command=self.exit_callback)
 
-        # ttk label for show result
-        self.show_state_label = ttk.Label(self.win, text="nothing happened")
-
         # layout
         self.__gui_layout()
         self.win.mainloop()
@@ -248,9 +267,6 @@ class StereoCalibrationGUI(GUI):
         self.exit_button.grid(row=row_count, column=1)
         row_count += 1
         ################################################################################
-        # use two column to show result
-        self.show_state_label.grid(row=row_count, column=1, columnspan=2, sticky="NW")
-        row_count += 1
 
     def __get_params_from_gui(self):
         master_camera_id = self.master_camera_id_combobox.get()

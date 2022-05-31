@@ -1,7 +1,7 @@
 """
 Author: windzu
-Date: 2022-05-30 09:59:43
-LastEditTime: 2022-05-30 13:39:04
+Date: 2022-05-31 19:43:10
+LastEditTime: 2022-06-01 01:27:02
 LastEditors: windzu
 Description: 
 FilePath: /windzu_tools/dev/tf_broadcaster/tf_broadcaster.py
@@ -14,9 +14,11 @@ import tf
 import sys
 from scipy.spatial.transform import Rotation
 import numpy as np
+import yaml
 
 # local
 sys.path.append("../../")
+from common.tf_info import TFInfo
 from utils.parse_tf_config import parse_tf_config
 
 
@@ -26,17 +28,24 @@ def main():
     br = tf.TransformBroadcaster()
     rate = rospy.Rate(publish_rate)
     # publish static tf
-    tf_config_file_path = "../../config/tf_config.yaml"
-    all_tf_info_dict = parse_tf_config(tf_config_file_path)
+    tf_config_path = "../../config/tf_config_test.yaml"
+    print("*** loading tf config files ***")
+    with open(tf_config_path, "r") as f:
+        all_raw_tf_config = yaml.load(f)
 
+    print("*** tf publishing ***")
     while not rospy.is_shutdown():
-        for kye, value in all_tf_info_dict.items():
-            # print(kye, value)
+        for key, value in all_raw_tf_config.items():
+            tf_info = TFInfo(key, value)
             br.sendTransform(
-                value["T"], value["R"], rospy.Time.now(), value["child_frame_id"], value["father_frame_id"]
+                translation=tf_info.T,
+                rotation=tf_info.R,
+                time=rospy.Time.now(),
+                child=tf_info.child_frame_id,
+                parent=tf_info.parent_frame_id,
             )
         rate.sleep()
-        print("publish static tf")
+    print("*** tf publish finished ***")
 
 
 if __name__ == "__main__":

@@ -31,14 +31,17 @@ class StereoCalibrationNode:
         slaver_get_frame,
         master_camera_info,
         slaver_camera_info,
+        tf_info,
         chessboard_info,
     ):
         self.master_get_frame = master_get_frame
         self.slaver_get_frame = slaver_get_frame
         self.master_camera_info = master_camera_info
         self.slaver_camera_info = slaver_camera_info
+        self.tf_info = tf_info
         self.chessboard_info = chessboard_info
         self.calibrator = None
+        self.reproj_error = None  # 保存最后的标定误差
 
     def start(self):
         def on_trackbar(alpha_slider):
@@ -49,7 +52,6 @@ class StereoCalibrationNode:
             master_camera_info=self.master_camera_info,
             slaver_camera_info=self.slaver_camera_info,
         )
-        print("*******start collect sample*******")
         window_name = "collecting sample"
         cv2.namedWindow(window_name)
         slider_max = 100
@@ -72,14 +74,16 @@ class StereoCalibrationNode:
                 cv2.destroyAllWindows()
                 return
             if key == 13:  # enter
-
                 self.calibrator._do_calibration()
-
                 self.calibrator.calibrated = True
             if self.calibrator.calibrated is True:
                 cv2.destroyAllWindows()
                 break
         cv2.destroyAllWindows()
+        # 保存标定结果
+        self.reproj_error = self.calibrator.reproj_error
+        self.tf_info.R = self.calibrator.R
+        self.tf_info.T = self.calibrator.T
 
     def show_result(self):
         def convert_board_to_4d(board_cols, board_rows, square_size):

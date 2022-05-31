@@ -127,17 +127,15 @@ class StereoCalibrator(CameraCalibrator):
                     self.stored_data["reproj_errors"].append(ret)
                 # 4. 检查是否已经采集到足够数据，如果是，则进行正式标定
                 if len(self.stored_data["master_images"]) >= self.min_samples:
-                    print("*******start calibrate*******")
                     self._do_calibration()
-                    print("*******calibrate finished*******")
-                # 5. 返回必要的信息
+                # 5. 同时检测到角点，并完成计算，返回必要的信息
                 stereo_handle_result.show_master_img = master_resized_gray
                 stereo_handle_result.show_slaver_img = slaver_resized_gray
                 stereo_handle_result.progress = int((len(self.stored_data["master_images"]) / self.min_samples) * 100)
                 stereo_handle_result.reproj_error = ret
                 return True, stereo_handle_result
             else:
-                # 5. 返回必要的信息
+                # 5. 未同时检测到角点，未完成计算，返回必要的信息
                 stereo_handle_result.show_master_img = master_resized_gray
                 stereo_handle_result.show_slaver_img = slaver_resized_gray
                 stereo_handle_result.progress = int((len(self.stored_data["master_images"]) / self.min_samples) * 100)
@@ -175,10 +173,6 @@ class StereoCalibrator(CameraCalibrator):
             print("len of corners is different")
 
         self._do_calibration_from_corners(master_corners, slaver_corners, calibration_flags)
-        print("reproj error:", self.reproj_error)
-        print("self.R:", self.R)
-        print("self.T:", self.T)
-        print("*******calibrate finished*******")
 
     def _do_calibration_from_corners(self, master_corners, slaver_corners, calibrate_flags=None):
         boards = [self.chessboard_info.BOARD for i in range(len(master_corners))]
