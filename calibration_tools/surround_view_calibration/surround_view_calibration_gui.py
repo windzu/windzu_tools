@@ -20,9 +20,12 @@ from tkinter import ttk  # 导入ttk模块，因为下拉菜单控件在ttk中
 
 # local
 sys.path.append("../../")
-from utils.camera_utils import parse_cameras_config, save_camera_config, camera_info_check
+# from utils.parse_camera_config import parse_camera_config
+from utils.parse_camera_config_copy import parse_camera_config
+from utils.save_camera_config import save_camera_config
 from utils.get_frame import GetFrame
-from common.camera_common import CCInfo, Patterns, InfoCheckLevel
+from common.cc_info import CCInfo
+from common.enum_common import Patterns, CameraInfoCheckLevel
 from common.gui import GUI
 from surround_view_calibration_node import SurroundViewCalibrationNode
 
@@ -170,7 +173,9 @@ class SurroundViewCalibrationGUI(GUI):
     def set_param_callback(self):
         (camera_id, pattern_size, square_size, front_padding, width_padding, back_padding) = self._get_params_from_gui()
         camera_info = self._get_camera_info_from_camera_config(camera_id)
-        cap = GetFrame(input_mode=camera_info.input_mode, device_name=camera_info.device_name, ros_topic=camera_info.ros_topic)
+        cap = GetFrame(
+            input_mode=camera_info.input_mode, device_name=camera_info.device_name, ros_topic=camera_info.ros_topic
+        )
         if not cap.cap.isOpened():
             print("failed to get frame/open camera , please check camera config or camera device")
             return
@@ -190,11 +195,17 @@ class SurroundViewCalibrationGUI(GUI):
         if self.surround_view_node is None:
             self.surround_view_node = SurroundViewCalibrationNode()
             self.surround_view_node._set_current_param(
-                current_camera_id=camera_id, current_cap=cap, current_cc_info=self.cc_info, current_camera_info=camera_info
+                current_camera_id=camera_id,
+                current_cap=cap,
+                current_cc_info=self.cc_info,
+                current_camera_info=camera_info,
             )
         else:
             self.surround_view_node._set_current_param(
-                current_camera_id=camera_id, current_cap=cap, current_cc_info=self.cc_info, current_camera_info=camera_info
+                current_camera_id=camera_id,
+                current_cap=cap,
+                current_cc_info=self.cc_info,
+                current_camera_info=camera_info,
             )
         self._print_camera_info(camera_info)
         print("set_param success")
@@ -213,7 +224,9 @@ class SurroundViewCalibrationGUI(GUI):
         camera_info = self.surround_view_node.current_camera_info
         camera_info.mask_size = self.cc_info.img_size
         self._set_params_to_camera_config(camera_id, camera_info)
-        ret = save_camera_config(self.camera_config_path, self.camera_id_list, self.camera_config_dict, self.camera_raw_config_dict)
+        ret = save_camera_config(
+            self.camera_config_path, self.camera_id_list, self.camera_config_dict, self.camera_raw_config_dict
+        )
         if ret:
             print("save camera config success")
         else:
@@ -237,7 +250,9 @@ class SurroundViewCalibrationGUI(GUI):
             camera_info = self._get_camera_info_from_camera_config(camera_id)
             camera_info.mask = mask_points_dict[camera_id]
             self._set_params_to_camera_config(camera_id, camera_info)
-        ret = save_camera_config(self.camera_config_path, self.camera_id_list, self.camera_config_dict, self.camera_raw_config_dict)
+        ret = save_camera_config(
+            self.camera_config_path, self.camera_id_list, self.camera_config_dict, self.camera_raw_config_dict
+        )
         if ret:
             print("save camera config success")
         else:
@@ -245,7 +260,9 @@ class SurroundViewCalibrationGUI(GUI):
 
     def show_result_callback(self):
         print("start show result")
-        self.camera_id_list, self.camera_config_dict, self.camera_raw_config_dict = parse_cameras_config(self.camera_config_path)
+        self.camera_id_list, self.camera_config_dict, self.camera_raw_config_dict = parse_cameras_config(
+            self.camera_config_path
+        )
         camera_id_list = ["/camera/front_wild", "/camera/left_wild", "/camera/right_wild", "/camera/back_wild"]
         info_check_level = InfoCheckLevel.SURROUND_SPECIAL
 
@@ -281,7 +298,9 @@ class SurroundViewCalibrationGUI(GUI):
 
         for camera_id in camera_id_list:
             camera_info = self._get_camera_info_from_camera_config(camera_id)
-            cap = GetFrame(input_mode=camera_info.input_mode, device_name=camera_info.device_name, ros_topic=camera_info.ros_topic)
+            cap = GetFrame(
+                input_mode=camera_info.input_mode, device_name=camera_info.device_name, ros_topic=camera_info.ros_topic
+            )
             ret, camera_info = camera_info_check(camera_info=camera_info, info_check_level=info_check_level)
             if ret is False:
                 print("camera_info check failed")

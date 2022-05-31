@@ -21,7 +21,11 @@ from tkinter import ttk  # 导入ttk模块，因为下拉菜单控件在ttk中
 sys.path.append("../../")
 from utils.get_frame import GetFrame
 from utils.save_camera_config import save_camera_config
-from utils.parse_camera_config import parse_camera_config
+
+# from utils.parse_camera_config import parse_camera_config
+from utils.parse_camera_config_copy import parse_camera_config
+from utils.parse_tf_config import parse_tf_config
+from utils.save_tf_config import save_tf_config
 from common.chessboard_info import ChessboardInfo
 from common.gui import GUI
 from stereo_calibration_node import StereoCalibrationNode
@@ -46,9 +50,10 @@ from stereo_calibration_node import StereoCalibrationNode
 
 
 class StereoCalibrationGUI(GUI):
-    def __init__(self, camera_config_path):
+    def __init__(self, camera_config_path, tf_config_path):
         super(StereoCalibrationGUI, self).__init__()
         self.camera_config_path = camera_config_path
+        self.tf_config_path = tf_config_path
         self.node = None
         self.__parse_files_init()
         self.__gui_init()
@@ -111,26 +116,23 @@ class StereoCalibrationGUI(GUI):
         print(config_name)
         print("R: ", self.node.calibrator.R)
         print("T: ", self.node.calibrator.T)
-        config_dict = {}
-        R_dict = {"R": self.node.calibrator.R.flatten().tolist()}
-        T_dict = {"T": self.node.calibrator.T.flatten().tolist()}
-        config_dict[config_name] = {
-            "R": self.node.calibrator.R.flatten().tolist(),
-            "T": self.node.calibrator.T.flatten().tolist(),
-        }
-        with open("../../config/tf_config.yaml", "a") as f:
-            yaml.dump(config_dict, f, default_flow_style=False)
-            return True
 
-        print("print sucess")
-        # self.camera_info_dict[camera_id] = self.node.camera_info
-        # save_camera_config(
-        #     self.camera_config_path,
-        #     camera_id,
-        #     self.camera_info_dict,
-        #     self.camera_raw_config_dict,
-        # )
-        # print("save success")
+        ret = save_tf_config(
+            father_frame_id=master_camera_id,
+            child_frame_id=slaver_camera_id,
+            R=self.node.calibrator.R,
+            T=self.node.calibrator.T,
+            all_tf_info=self.all_tf_info,
+            all_raw_tf_info=self.all_raw_tf_info,
+            tf_config_path=self.tf_config_path,
+        )
+
+        if ret:
+            print("save success")
+            return True
+        else:
+            print("save failed")
+            return False
 
     def exit_callback(self):
         cv2.destroyAllWindows()
@@ -144,11 +146,20 @@ class StereoCalibrationGUI(GUI):
             相机配置文件
         """
         print("*** parse files init ***")
+        print("*** 1. parse camera config ***")
         (
             self.camera_id_list,
             self.camera_info_dict,
             self.camera_raw_config_dict,
         ) = parse_camera_config(self.camera_config_path)
+        print("*** parse camera config success ***")
+
+        print("*** 2. parse tf config ***")
+        (
+            self.all_tf_info,
+            self.all_raw_tf_info,
+        ) = parse_tf_config(self.tf_config_path)
+        print("*** parse tf config success ***")
 
     def __gui_init(self):
         # create root window

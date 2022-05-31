@@ -1,3 +1,5 @@
+import sys
+
 # local
 sys.path.append("../")
 from common.enum_common import Patterns

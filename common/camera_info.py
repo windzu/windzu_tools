@@ -15,51 +15,26 @@ import numpy as np
 
 # local
 sys.path.append("../")
-from common.enum_common import CameraModel, CameraInfoCheckLevel
+from common.enum_common import CameraModel, CameraInfoCheckLevel, FrameInputMode
 
 
 class CameraInfo:
-    def __init__(
-        self,
-        camera_id,
-        input_mode,
-        device_name,
-        ros_topic,
-        camera_model,
-        resolution,
-        intrinsics_matrix=None,
-        distortion_coefficients=None,
-        scale_xy=None,
-        shift_xy=None,
-        mask_size=None,
-        mask=None,
-        mask_ploygon_corner_points=None,
-        homography_matrix=None,
-        imu_to_camera_translation_xyz=None,
-        imu_to_camera_rotation_offset_xyz=None,
-    ):
-        # 确定一下相机图像的输入方式
+    def __init__(self, camera_id, camera_config):
+        """_summary_
+
+        Args:
+            camera_info (_type_): 存储相机基础信息的字典。如果是环视，则还包含环视拼接的相关信息。
+        """
+        # 基础信息
         self.camera_id = camera_id
-        self.input_mode = input_mode
-        self.device_name = device_name
-        self.ros_topic = ros_topic
-        # 在标定伊始，相机的模型和分辨率都是必然已知的(与相机配置文件内容一致)
-        self.camera_model = camera_model
-        self.resolution = resolution
+        self.serialize(camera_config)
 
-        # 在标定完成后，最终需要保存的内容(与相机配置文件内容一致)
-        self.intrinsics_matrix = intrinsics_matrix
-        self.distortion_coefficients = distortion_coefficients
-        self.scale_xy = scale_xy
-        self.shift_xy = shift_xy
-        self.mask_size = mask_size
-        self.mask = mask
-        self.mask_ploygon_corner_points = mask_ploygon_corner_points
-        self.homography_matrix = homography_matrix
+        # 环视拼接特有的信息（optinal）
 
+        # 外参信息（optinal），不通过camera_info传入
         # imu to camera 外参
-        self.imu_to_camera_translation_xyz = imu_to_camera_translation_xyz  # 旋转前三个轴的平移量
-        self.imu_to_camera_rotation_offset_xyz = imu_to_camera_rotation_offset_xyz  # 旋转后三个轴的旋转微调量
+        self.imu_to_camera_translation_xyz = None  # 旋转前三个轴的平移量
+        self.imu_to_camera_rotation_offset_xyz = None  # 旋转后三个轴的旋转微调量
 
         # 标定过程中临时变量
         ## 外参旋转和平移量
@@ -71,6 +46,175 @@ class CameraInfo:
         # 状态量
         self.reproj_err = None
         self.ok = False
+
+    def serialize_camera_config(self, camera_config):
+        """从原始字典格式解析相机的配置信息"""
+        # 解析相机基础信息
+        self.serialize_basic_camera_config(camera_config)
+
+        # 解析环视拼接所需信息
+        self.serialize_surround_camera_config(camera_config)
+
+    def serialize_basic_camera_config(self, camera_config):
+        """解析相机基础信息,camera_config 的字典信息,来自于直接加载的yaml文件:
+            camera_model
+            input_mode
+            ros_topic
+            resolution
+            intrinsics_matrix
+            distortion_coefficients
+
+        Args:
+            camera_config (_type_): camera_config 的字典信息,来自于直接加载的yaml文件
+        """
+
+        def prase_camera_model(camera_config):
+            camera_model = camera_config["camera_model"]
+            if camera_model == "pinhole":
+                camera_model = CameraModel.PINHOLE
+            elif camera_model == "fisheye":
+                camera_model = CameraModel.FISHEYE
+            else:
+                raise ValueError("camera_model is invalid")
+            return camera_model
+
+        def parse_input_mode(camera_config):
+            input_mode = camera_config["input_mode"]
+            if input_mode == "ros_topic":
+                input_mode = FrameInputMode.ROS_TOPIC
+            elif input_mode == "device_name":
+                input_mode = FrameInputMode.DEVICE_NAME
+            else:
+                raise ValueError("input_mode is not invalid")
+            return input_mode
+
+        def parse_device_name(camera_config):
+            if "device_name" in camera_config.keys() and camera_config["device_name"] is not None:
+                device_name = camera_config["device_name"]
+                return device_name
+            else:
+                raise ValueError("device_name is not invalid")
+
+        def parse_ros_topic(camera_config):
+            if "ros_topic" in camera_config.keys() and camera_config["ros_topic"] is not None:
+                ros_topic = camera_config["ros_topic"]
+                return ros_topic
+            else:
+                raise ValueError("ros_topic is invalid")
+
+        def parse_resolution(camera_config):
+            if "resolution" in camera_config.keys() and camera_config["resolution"] is not None:
+                resolution = camera_config["resolution"]
+                return resolution
+            else:
+                raise ValueError("resolution is invalid")
+
+        def parse_intrinsics_matrix(camera_config):
+            if "intrinsics_matrix" in camera_config.keys() and camera_config["intrinsics_matrix"] is not None:
+                intrinsics_matrix = camera_config["intrinsics_matrix"]
+                intrinsics_matrix = np.array(intrinsics_matrix, dtype=np.float32)
+                intrinsics_matrix = intrinsics_matrix.reshape(3, 3)
+                return intrinsics_matrix
+            else:
+                raise ValueError("intrinsics_matrix is invalid")
+
+        def parse_distortion_coefficients(camera_config):
+            if (
+                "distortion_coefficients" in camera_config.keys()
+                and camera_config["distortion_coefficients"] is not None
+            ):
+                distortion_coefficients = camera_config["distortion_coefficients"]
+                distortion_coefficients = np.array(distortion_coefficients, dtype=np.float32)
+                return distortion_coefficients
+            else:
+                raise ValueError("distortion_coefficients is invalid")
+
+        # 相机的基本信息
+        self.camera_model = prase_camera_model(camera_config)
+        self.input_mode = parse_input_mode(camera_config)
+        self.device_name = parse_device_name(camera_config)
+        self.ros_topic = parse_ros_topic(camera_config)
+        self.resolution = parse_resolution(camera_config)
+        self.intrinsics_matrix = parse_intrinsics_matrix(camera_config)
+        self.distortion_coefficients = parse_distortion_coefficients(camera_config)
+
+    def serialize_surround_camera_config(self, camera_config):
+        """解析相机关于环视的信息,camera_config的字典信息,来自于直接加载的yaml文件:
+        scale_xy : 图像的缩放比例
+        shift_xy : 图像的平移量
+        mask_size:环视拼接的mask大小,即拼接图的总大小
+        mask:该相机对应的mask区域,是一个四边梯形
+        ploygon_corner_points:上述mask区域的四个角点坐标
+        homography_matrix:环视相机进行变换的homography矩阵
+        """
+
+        def parse_scale_xy(camera_config, camera_model):
+            if "scale_xy" in camera_config.keys():
+                scale_xy = camera_config["scale_xy"]
+                return scale_xy
+            elif camera_model == CameraModel.FISHEYE:
+                scale_xy = [1, 1]
+                return scale_xy
+            else:
+                return None
+
+        def parse_shift_xy(camera_config, camera_model):
+            if "shift_xy" in camera_config.keys():
+                shift_xy = camera_config["shift_xy"]
+                return shift_xy
+            elif camera_model == CameraModel.FISHEYE:
+                shift_xy = [0, 0]
+                return shift_xy
+            else:
+                return None
+
+        def parse_mask_size(camera_config):
+            if "mask_size" in camera_config.keys() and camera_config["mask_size"] is not None:
+                mask_size = camera_config["mask_size"]
+                return mask_size
+            else:
+                return None
+
+        def parse_mask(camera_config, mask_size):
+            """将mask的四个角点坐标转换为cv2格式的mask"""
+            if mask_size is None:
+                return None
+            mask = np.zeros((mask_size[1], mask_size[0]), np.uint8)
+            if "mask" in camera_config.keys() and camera_config["mask"] is not None:
+                mask_polygon_corner_points = camera_config["mask"]
+                mask_polygon_corner_points = np.array(mask_polygon_corner_points, np.int32)
+                mask_polygon_corner_points = mask_polygon_corner_points.reshape((-1, 1, 2))
+                mask = cv2.fillPoly(mask, [mask_polygon_corner_points], 255)
+            else:
+                mask = None
+            return mask
+
+        def parse_ploygon_corner_points(camera_config):
+            """将mask的四个角点坐标转换为角点坐标单独存储"""
+            if "mask" in camera_config.keys() and camera_config["mask"] is not None:
+                mask_polygon_corner_points = camera_config["mask"]
+            else:
+                mask_polygon_corner_points = None
+            return mask_polygon_corner_points
+
+        def parse_homography_matrix(camera_config):
+            if "homography_matrix" in camera_config.keys() and camera_config["homography_matrix"] is not None:
+                homography_matrix = camera_config["homography_matrix"]
+                homography_matrix = np.array(homography_matrix, dtype=np.float32)
+                homography_matrix = homography_matrix.reshape(3, 3)
+                return homography_matrix
+            else:
+                return None
+
+        self.scale_xy = parse_scale_xy(camera_config, self.camera_model)
+        self.shift_xy = parse_shift_xy(camera_config, self.camera_model)
+        self.mask_size = parse_mask_size(camera_config)
+        self.mask = parse_mask(camera_config, self.mask_size)
+        self.mask_polygon_corner_points = parse_ploygon_corner_points(camera_config)
+        self.homography_matrix = parse_homography_matrix(camera_config)
+
+    def deserialize(self):
+        pass
 
     def info_check(self, info_check_level):
         """对camera_info的完整性进行检查,如果camera_info中的相关信息不完整,则返回False,检查分几个等级

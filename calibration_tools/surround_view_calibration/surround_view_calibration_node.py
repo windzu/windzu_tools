@@ -16,7 +16,7 @@ import sys
 
 # local
 sys.path.append("../../")
-from common.camera_common import InfoCheckLevel
+from common.enum_common import CameraInfoCheckLevel
 from utils.camera_utils import camera_info_check, calculate_cameras_mask, PointSelector
 
 
