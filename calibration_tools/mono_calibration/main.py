@@ -1,7 +1,7 @@
 """
 Author: windzu
-Date: 2022-05-26 22:32:37
-LastEditTime: 2022-05-27 01:30:24
+Date: 2022-05-27 09:21:54
+LastEditTime: 2022-06-01 10:04:39
 LastEditors: windzu
 Description: 
 FilePath: /windzu_tools/calibration_tools/mono_calibration/main.py
@@ -17,7 +17,7 @@ from mono_calibration_gui import MonoCalibrationGUI
 
 def main():
     rospy.init_node("test")
-    camera_config_path = "../../config/mono_camera_config_template.yaml"
+    camera_config_path = "../../config/camera_config_test.yaml"
     gui = MonoCalibrationGUI(camera_config_path)
 
 

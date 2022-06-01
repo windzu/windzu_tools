@@ -66,6 +66,10 @@ class StereoCalibrationGUI(GUI):
         self.tf_info = None
         self.chessboard_info = None
 
+        # 待分配参数
+        self.all_raw_camera_config = {}
+        self.all_raw_tf_config = {}
+
         self.__loading_files()
         self.__gui_init()
         print("[ GUI ] init success")
@@ -124,9 +128,10 @@ class StereoCalibrationGUI(GUI):
 
     def start_callback(self):
         if self.node is None:
-            print("please set params first!")
+            print("[ GUI ] error , please set params first!")
             return
         self.node.start()
+        print("[ GUI ] start success and complete calibration")
         self.master_camera_info = self.node.master_camera_info
         self.slaver_camera_info = self.node.slaver_camera_info
         self.tf_info = self.node.tf_info
@@ -135,7 +140,6 @@ class StereoCalibrationGUI(GUI):
         self.slaver_camera_info.echo()
         self.tf_info.echo()
         print("[ GUI ] reproj error: {}".format(self.node.reproj_error))
-        print("[ GUI ] start success and complete calibration")
         print("************************************************")
 
     def show_result_callback(self):
@@ -148,17 +152,14 @@ class StereoCalibrationGUI(GUI):
             raise Exception("please set params first!")
 
         tf_id = self.tf_info.tf_id
-        if self.all_raw_tf_config is None:
-            self.all_raw_tf_config = dict()
         self.all_raw_tf_config[tf_id] = self.tf_info.deserialize_tf_config()
-
-        print("[ GUI ] tf_id : ", tf_id)
-        print("[ GUI ] R: ", self.tf_info.R)
-        print("[ GUI ] T: ", self.tf_info.T)
 
         with open(self.tf_config_path, "w") as f:
             yaml.dump(self.all_raw_tf_config, f, default_flow_style=False)
 
+        print("[ GUI ] tf_id : ", tf_id)
+        print("[ GUI ] R: ", self.tf_info.R)
+        print("[ GUI ] T: ", self.tf_info.T)
         print("************************************************")
 
     def exit_callback(self):
@@ -171,17 +172,14 @@ class StereoCalibrationGUI(GUI):
 
     def __loading_files(self):
         """读取yaml配置文件"""
-        print("*** start load config files ***")
-        print("*** loading camera config files ***")
+        # 读取相机配置文件
         with open(self.camera_config_path, "r") as f:
             self.all_raw_camera_config = yaml.load(f)
         self.camera_id_list = [key for key in self.all_raw_camera_config.keys()]
 
-        print("*** loading tf config files ***")
+        # 读取tf配置文件
         with open(self.tf_config_path, "r") as f:
             self.all_raw_tf_config = yaml.load(f)
-
-        print("*** load config files finished ***")
 
     def __gui_init(self):
         # create root window

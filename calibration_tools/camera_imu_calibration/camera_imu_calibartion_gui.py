@@ -19,14 +19,14 @@ from tkinter import ttk  # 导入ttk模块，因为下拉菜单控件在ttk中
 
 # local
 sys.path.append("../../")
+from common.camera_common import ChessboardInfo
+from common.gui import GUI
+from common.tf_info import TFInfo
+from camera_imu_calibration_node import CameraIMUCalibrationNode
+from common.camera_info import CameraInfo
 from utils.get_frame import GetFrame
 from utils.get_rtk import GetRTK
 from utils.parse_hdmap import parse_hdmap
-from utils.save_camera_config import save_camera_config
-from utils.parse_camera_config import parse_camera_config
-from common.camera_common import ChessboardInfo
-from common.gui import GUI
-from camera_imu_calibration_node import CameraIMUCalibrationNode
 
 
 # CameraIMUCalibrationGUI
@@ -44,33 +44,83 @@ from camera_imu_calibration_node import CameraIMUCalibrationNode
 
 
 class CameraIMUCalibrationGUI(GUI):
-    def __init__(self, camera_config_path, hdmap_config_path, get_rtk_topics):
+    def __init__(self, camera_config_path, hdmap_config_path, gps_topic, imu_topic):
         super(CameraIMUCalibrationGUI, self).__init__()
         self.camera_config_path = camera_config_path
         self.hdmap_config_path = hdmap_config_path
-        self.get_rtk_topics = get_rtk_topics
-        self.get_rtk = GetRTK(gps_topic=self.get_rtk_topics["gps_topic"], imu_topic=self.get_rtk_topics["imu_topic"])
+        self.gps_topic = gps_topic
+        self.imu_topic = imu_topic
         self.node = None
-        self.__parse_files_init()
+
+        # get rtk init
+        self.get_rtk = GetRTK(gps_topic=self.gps_topic, imu_topic=self.imu_topic)
+
+        # 未初始化参数
+        self.camera_info = None
+        self.camera_get_frame = None
+        self.tf_info = None
+
+        # 为填充参数
+        self.camera_id_list = []
+        self.tl_id_list = []
+
+        # 待分配参数
+        self.all_raw_camera_config = {}
+        self.all_raw_tf_config = {}
+        self.all_tl_info = {}  # 解析后的hdmap
+
+        # 加载相机配置文件、tf配置文件、hdmap
+        self.__loading_files()
         self.__gui_init()
+        print("[ GUI ] init success")
+        print("************************************************")
 
     def set_param_callback(self):
         (camera_id, tl_id) = self.__get_params_from_gui()
-        tl_info = self.tl_info_dict[tl_id]
-        camera_info = self.camera_info_dict[camera_id]
-        get_frame = GetFrame(input_mode=camera_info.input_mode, device_name=camera_info.device_name, ros_topic=camera_info.ros_topic)
-        get_rtk = self.get_rtk
-        self.node = CameraIMUCalibrationNode(get_frame=get_frame, get_rtk=get_rtk, camera_info=camera_info, tl_info=tl_info)
-        camera_info.echo()
-        print("**** set params success ****")
+
+        # tl info init
+        self.tl_info = self.all_tl_info[tl_id]
+        # tf info init
+        # 从imu到相机的坐标系变换
+        # 1. 先y轴正方向旋转90度
+        # 2. 再x轴逆方向旋转90度
+        tf_id = "/imu" + "_to_" + camera_id
+        if tf_id not in self.all_raw_tf_config.keys():
+            self.tf_info = TFInfo(tf_id)
+        else:
+            self.tf_info = TFInfo(tf_id, self.all_raw_tf_config[tf_id])
+        # camera info init
+        self.camera_info = CameraInfo(camera_id, self.all_raw_camera_config[camera_id])
+
+        # get frame init
+        self.camera_get_frame = GetFrame(
+            input_mode=self.camera_info.input_mode,
+            device_name=self.camera_info.device_name,
+            ros_topic=self.camera_info.ros_topic,
+        )
+
+        self.node = CameraIMUCalibrationNode(
+            get_frame=self.camera_get_frame,
+            get_rtk=self.get_rtk,
+            camera_info=self.camera_info,
+            tl_info=self.tl_info,
+            tf_info=self.tf_info,
+        )
+        # echo result
+        self.camera_info.echo()
+        self.tf_info.echo()
+        print("[ GUI ] set params success")
+        print("************************************************")
 
     def start_callback(self):
         if self.node is None:
             print("please set params first!")
             return
         self.node.start()
-        # echo result
-        self.node.camera_info.echo()
+
+        # 信息同步
+        self.camera_info = self.node.camera_info
+        self.tf_info = self.node.tf_info
 
     def show_result_callback(self):
         print("show result")
@@ -79,10 +129,16 @@ class CameraIMUCalibrationGUI(GUI):
     def save_callback(self):
         if self.node is None:
             raise Exception("please set params first!")
-        camera_id = self.camera_id_combobox.get()
-        self.camera_info_dict[camera_id] = self.node.camera_info
-        save_camera_config(self.camera_config_path, camera_id, self.camera_info_dict, self.camera_raw_config_dict)
-        print("save success")
+
+        tf_id = self.tf_info.tf_id
+        self.all_raw_tf_config[tf_id] = self.tf_info.deserialize_tf_config()
+
+        with open(self.tf_config_path, "w") as f:
+            yaml.dump(self.all_raw_tf_config, f, default_flow_style=False)
+        print("[ GUI ] tf_id : ", tf_id)
+        print("[ GUI ] R: ", self.tf_info.R)
+        print("[ GUI ] T: ", self.tf_info.T)
+        print("************************************************")
 
     def exit_callback(self):
         cv2.destroyAllWindows()
@@ -90,10 +146,20 @@ class CameraIMUCalibrationGUI(GUI):
         self.win.destroy()
         print("exit success")
 
-    def __parse_files_init(self):
-        print("**** parse file init ****")
-        self.camera_id_list, self.camera_info_dict, self.camera_raw_config_dict = parse_camera_config(self.camera_config_path)
-        self.tl_id_list, self.tl_info_dict = parse_hdmap(self.hdmap_config_path)
+    def __loading_files(self):
+        """读取配置文件"""
+        # 读取相机配置文件
+        with open(self.camera_config_path, "r") as f:
+            self.all_raw_camera_config = yaml.load(f)
+        self.camera_id_list = [key for key in self.all_raw_camera_config.keys()]
+
+        # 读取tf配置文件
+        with open(self.tf_config_path, "r") as f:
+            self.all_raw_tf_config = yaml.load(f)
+
+        # 读取hdmap文件
+        self.all_tl_info = parse_hdmap(self.hdmap_config_path)
+        self.tl_id_list = [key for key in self.all_tl_info.keys()]
 
     def __gui_init(self):
         # create root window

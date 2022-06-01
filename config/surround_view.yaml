@@ -6,12 +6,6 @@
   - 1920
   - 1080
   ros_topic: /camera/back_wild/compressed
-  scale_xy:
-  - 1.0
-  - 1.0
-  shift_xy:
-  - 0
-  - 0
 /camera/front_wild:
   camera_model: fisheye
   device_name: /dev/fisheye_left
@@ -20,12 +14,6 @@
   - 1920
   - 1080
   ros_topic: /camera/front_wild/compressed
-  scale_xy:
-  - 1.0
-  - 1.0
-  shift_xy:
-  - 0
-  - 0
 /camera/left_wild:
   camera_model: fisheye
   device_name: /dev/fisheye_left
@@ -34,10 +22,11 @@
   - 1920
   - 1080
   ros_topic: /camera/left_wild/compressed
-  scale_xy:
-  - 1.0
-  - 1.0
-  shift_xy:
-  - 0
-  - 0
 /camera/right_wild:
+  camera_model: fisheye
+  device_name: /dev/fisheye_left
+  input_mode: ros_topic
+  resolution:
+  - 1920
+  - 1080
+  ros_topic: /camera/right_wild/compressed

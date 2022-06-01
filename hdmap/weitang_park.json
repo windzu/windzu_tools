@@ -1,0 +1,18 @@
+{
+    "default": [
+        {
+            "tl_id": "tl_01",
+            "latitude": 31.46309625,
+            "longtitude": 120.6472083,
+            "height": 1.6,
+            "next_motivation": "right"
+        },
+        {
+            "tl_id": "tl_02",
+            "latitude": 31.4640517,
+            "longtitude": 120.6475349,
+            "height": 1.6,
+            "next_motivation": "left"
+        }
+    ]
+}

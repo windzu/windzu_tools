@@ -19,12 +19,13 @@ from tkinter import ttk  # 导入ttk模块，因为下拉菜单控件在ttk中
 
 # local
 sys.path.append("../../")
-from utils.get_frame import GetFrame
-from utils.save_camera_config import save_camera_config
-from utils.parse_camera_config import parse_camera_config
+from common.camera_info import CameraInfo
 from common.chessboard_info import ChessboardInfo
 from common.gui import GUI
 from mono_calibration_node import MonoCalibrationNode
+from utils.get_frame import GetFrame
+from utils.save_camera_config import save_camera_config
+from utils.parse_camera_config import parse_camera_config
 
 
 # MonoCalibrationGUI
@@ -48,56 +49,87 @@ class MonoCalibrationGUI(GUI):
         super(MonoCalibrationGUI, self).__init__()
         self.camera_config_path = camera_config_path
         self.node = None
-        self.__parse_files_init()
+
+        # 为填充参数
+        self.camera_id_list = []
+
+        # 未初始化参数
+        self.camera_info = None
+        self.camera_get_frame = None
+        self.chessboard_info = None
+
+        # 待分配参数
+        self.all_raw_camera_config = {}
+
+        self.__loading_files()
         self.__gui_init()
+        print("[ GUI ] init success")
+        print("************************************************")
 
     def set_param_callback(self):
         (camera_id, chessboard_size, square_size) = self.__get_params_from_gui()
-        camera_info = self.camera_info_dict[camera_id]
-        get_frame = GetFrame(
-            input_mode=camera_info.input_mode, device_name=camera_info.device_name, ros_topic=camera_info.ros_topic
+        self.camera_info = CameraInfo(camera_id, self.all_raw_camera_config[camera_id])
+
+        self.camera_get_frame = GetFrame(
+            input_mode=self.camera_info.input_mode,
+            device_name=self.camera_info.device_name,
+            ros_topic=self.camera_info.ros_topic,
         )
-        chessboard_info = ChessboardInfo(n_cols=chessboard_size[0], n_rows=chessboard_size[1], square_size=square_size)
-        self.node = MonoCalibrationNode(get_frame=get_frame, chessboard_info=chessboard_info, camera_info=camera_info)
+
+        # chessboard info init
+        self.chessboard_info = ChessboardInfo(
+            n_cols=chessboard_size[0],
+            n_rows=chessboard_size[1],
+            square_size=square_size,
+        )
+
+        # node init
+        self.node = MonoCalibrationNode(
+            get_frame=self.camera_get_frame, chessboard_info=self.chessboard_info, camera_info=self.camera_info
+        )
         # echo result
-        camera_info.echo()
-        print("**** set params success ****")
+        self.camera_info.echo()
+        print("[ GUI ] set params success")
+        print("************************************************")
 
     def start_callback(self):
         if self.node is None:
             print("please set params first!")
             return
         self.node.start()
+        print("[ GUI ] start success and complete calibration")
+        self.camera_info = self.node.camera_info
         # echo result
-        self.node.camera_info.echo()
+        self.camera_info.echo()
+        print("[ GUI ] reproj error: {}".format(self.node.reproj_error))
+        print("************************************************")
 
     def show_result_callback(self):
-        print("show result")
+        print("[ GUI ] show result")
         self.node.show_result()
+        print("************************************************")
 
     def save_callback(self):
         if self.node is None:
             raise Exception("please set params first!")
-        camera_id = self.camera_id_combobox.get()
-        self.camera_info_dict[camera_id] = self.node.camera_info
-        save_camera_config(self.camera_config_path, camera_id, self.camera_info_dict, self.camera_raw_config_dict)
-        print("save success")
+
+        camera_id = self.camera_info.camera_id
+        self.all_raw_camera_config[camera_id] = self.camera_info.deserialize_camera_config()
+
+        with open(self.camera_config_path, "w") as f:
+            yaml.dump(self.all_raw_camera_config, f, default_flow_style=False)
+
+        print("[ GUI ] camera_id : ", camera_id)
+        print("[ GUI ] intrinsics_matrix: ", self.camera_info.intrinsics_matrix)
+        print("[ GUI ] distortion_coeffs: ", self.camera_info.distortion_coeffs)
+        print("************************************************")
 
     def exit_callback(self):
         cv2.destroyAllWindows()
-        self.win.quit()
         self.win.destroy()
-        print("exit success")
-
-    def __parse_files_init(self):
-        """按需解析配置文件，将其实例化为类对象
-        本次需要解析文件：
-            相机配置文件
-        """
-        print("*** parse files init ***")
-        self.camera_id_list, self.camera_info_dict, self.camera_raw_config_dict = parse_camera_config(
-            self.camera_config_path
-        )
+        self.win.quit()
+        print("[ GUI ] exit success")
+        print("************************************************")
 
     def __gui_init(self):
         # create root window
@@ -137,9 +169,6 @@ class MonoCalibrationGUI(GUI):
         self.save_button = ttk.Button(self.win, text="save", command=self.save_callback)
         self.exit_button = ttk.Button(self.win, text="exit", command=self.exit_callback)
 
-        # ttk label for show result
-        self.show_state_label = ttk.Label(self.win, text="nothing happened")
-
         # layout
         self.__gui_layout()
         self.win.mainloop()
@@ -171,12 +200,16 @@ class MonoCalibrationGUI(GUI):
         self.exit_button.grid(row=row_count, column=1)
         row_count += 1
         ################################################################################
-        # use two column to show result
-        self.show_state_label.grid(row=row_count, column=1, columnspan=2, sticky="NW")
-        row_count += 1
 
     def __get_params_from_gui(self):
         camera_id = self.camera_id_combobox.get()
         chessboard_size = [int(x) for x in self.chessboard_size_combobox.get().split("x")]
         square_size = double(self.chessboard_square_size_combobox.get())
         return (camera_id, chessboard_size, square_size)
+
+    def __loading_files(self):
+        """读取yaml配置文件"""
+        # 读取相机配置文件
+        with open(self.camera_config_path, "r") as f:
+            self.all_raw_camera_config = yaml.load(f)
+        self.camera_id_list = [key for key in self.all_raw_camera_config.keys()]

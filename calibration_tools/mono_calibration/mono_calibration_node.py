@@ -55,7 +55,6 @@ class MonoCalibrationNode:
             chessboard_info=self.chessboard_info,
             camera_info=self.camera_info,
         )
-        print("*******start collect sample*******")
         window_name = "collecting sample"
         cv2.namedWindow(window_name)
         slider_max = 100
@@ -92,14 +91,14 @@ class MonoCalibrationNode:
                 cv2.destroyAllWindows()
                 return
             if key == 13:  # enter
-                print("*******start calibrate*******")
                 self.calibrator._do_calibration()
-                print("*******calibrate finished*******")
                 self.calibrator.calibrated = True
             if self.calibrator.calibrated is True:
                 cv2.destroyAllWindows()
                 break
         cv2.destroyAllWindows()
+        # 保存标定结果
+        self.reproj_error = self.calibrator.reproj_error
 
     def show_result(self):
         """显示标定结果,对应gui中的show result按钮"""
@@ -108,14 +107,8 @@ class MonoCalibrationNode:
 
         # debug
         print(self.camera_info)
-        print("start show result!!")
         if self.calibrator is None:
-            self.calibrator = MonoCalibrator(
-                chessboard_info=self.chessboard_info,
-                camera_info=self.camera_info,
-                calibrator_function_flags=self.calibrator_function_flags,
-                calibrator_target_threshold=self.calibrator_target_threshold,
-            )
+            self.calibrator = MonoCalibrator(chessboard_info=self.chessboard_info, camera_info=self.camera_info)
         self.calibrator.calibrated = True
         while True:
             frame = self.get_frame.read()

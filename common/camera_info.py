@@ -376,31 +376,41 @@ class CameraInfo:
             self.__base_check()
             self.__advanced_check()
             self.__completed_check()
-            self.__surround_special_check()
-        elif info_check_level == CameraInfoCheckLevel.IMU_TO_CAMERA:
-            self.__imu_to_camera_check()
+            self.__surround_view_check()
 
     def __base_check(self):
+        """检查相机模型、分辨率"""
         if not isinstance(self.camera_model, CameraModel):
             raise Exception("camera_model is not CameraModel")
         if self.resolution is None or len(self.resolution) != 2:
             raise Exception("resolution is not 2-element list")
 
     def __advanced_check(self):
+        """检查相机内参数、畸变系数
+        如果是鱼眼,还要检查scale_xy和shift_xy
+        """
         if self.intrinsics_matrix is None or len(self.intrinsics_matrix) != 3:
             raise Exception("intrinsics_matrix is not 3-element list")
         if self.distortion_coefficients is None:
             raise Exception("distortion_coefficients is None")
         if self.camera_model is CameraModel.FISHEYE:
             # 如果是鱼眼相机，则一定要检测scale_xy和shift_xy
-            if self.scale_xy is None or len(self.scale_xy) != 2:
+            # 如果不存在则使用默认值
+            if self.scale_xy is None:
+                print("scale_xy is None , will use default value")
+                self.shift_xy = [0, 0]
+            elif len(self.scale_xy) != 2:
                 raise Exception("scale_xy is not 2-element list")
-            if self.shift_xy is None or len(self.shift_xy) != 2:
+
+            if self.shift_xy is None:
+                print("shift_xy is None , will use default value")
+                self.shift_xy = [0, 0]
+            elif len(self.shift_xy) != 2:
                 raise Exception("shift_xy is not 2-element list")
 
     def __completed_check(self):
         if self.map1 is None or self.map2 is None:
-            print("no map1 or map2 , now calculate it")
+            print("map1 or map2 is none, will calculate it")
             if self.camera_model is CameraModel.FISHEYE:
                 new_mat = self.intrinsics_matrix.copy()
                 new_mat[0, 0] *= self.scale_xy[0]
@@ -427,25 +437,16 @@ class CameraInfo:
             else:
                 raise Exception("camera_model is not FISHEYE or PINHOLE")
 
-        def __surround_special_check(self):
-            if self.camera_model is CameraModel.FISHEYE:
-                if self.mask_size is None:
-                    raise Exception("mask_size is None")
-                if self.mask is None:
-                    raise Exception("mask is None")
-                if self.homography_matrix is None:
-                    raise Exception("homography_matrix is None")
-            else:
-                raise Exception("camera_model is not FISHEYE")
-
-    def __surround_special_check(self):
-        pass
-
-    def __imu_to_camera_check(self):
-        if self.imu_to_camera_translation_xyz is None or len(self.imu_to_camera_translation_xyz) != 3:
-            raise Exception("imu_to_camera_translation_xyz is not 3-element list")
-        if self.imu_to_camera_rotation_offset_xyz is None or len(self.imu_to_camera_rotation_offset_xyz) != 3:
-            raise Exception("imu_to_camera_rotation_xyz is not 3-element list")
+    def __surround_view_check(self):
+        if self.camera_model is CameraModel.FISHEYE:
+            if self.mask_size is None:
+                raise Exception("mask_size is None")
+            if self.mask is None:
+                raise Exception("mask is None")
+            if self.homography_matrix is None:
+                raise Exception("homography_matrix is None")
+        else:
+            raise Exception("camera_model is not FISHEYE")
 
     def echo(self):
         print("[ print camera_info ] : ")

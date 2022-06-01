@@ -1,5 +1,15 @@
 """
 Author: windzu
+Date: 2022-05-27 09:21:54
+LastEditTime: 2022-06-01 09:36:08
+LastEditors: windzu
+Description: 
+FilePath: /windzu_tools/common/enum_common.py
+@Copyright (C) 2021-2022 plusgo Company Limited. All rights reserved.
+@Licensed under the Apache License, Version 2.0 (the License)
+"""
+"""
+Author: windzu
 Date: 2022-05-25 21:54:08
 LastEditTime: 2022-05-27 00:35:04
 LastEditors: windzu
@@ -38,7 +48,7 @@ class CameraInfoCheckLevel(Enum):
 
     # ！！！ 特定场景检查模式 ！！！#
     ## 环视拼接检查级别 ##
-    SURROUND_SPECIAL = 3
+    SURROUND_VIEW = 3
     ## camera与imu外参标定检查级别 ##
     IMU_TO_CAMERA = 4
     ## 双目外参标定检查级别 ##

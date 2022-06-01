@@ -41,7 +41,11 @@ class StereoCalibrationNode:
         self.tf_info = tf_info
         self.chessboard_info = chessboard_info
         self.calibrator = None
-        self.reproj_error = None  # 保存最后的标定误差
+
+        # 保存标定结果
+        self.reproj_error = None  # 双目重投影误差
+        self.tf_info.R = None
+        self.tf_info.T = None
 
     def start(self):
         def on_trackbar(alpha_slider):

@@ -28,6 +28,7 @@ class MonoHandleResult(HandleResult):
         #### 标定未完成时需要返回的参数
         self.progress = None  # 标定进度
         #### 标定完成时需要返回的参数
+        self.reproj_error = -1  # 标定完成时的重投影误差
         self.linear_error = -1.0  # 线性误差
 
 
@@ -330,7 +331,7 @@ class MonoCalibrator(CameraCalibrator):
         if self.camera_info.camera_model == CameraModel.PINHOLE:
             print("mono pinhole calibration...")
             (
-                reproj_err,
+                self.reproj_error,
                 self.camera_info.intrinsics_matrix,
                 self.camera_info.distortion_coefficients,
                 self.camera_info.rvecs,
@@ -343,7 +344,6 @@ class MonoCalibrator(CameraCalibrator):
                 np.zeros((5, 1)),
                 flags=calibrate_flags.cv2_calibrateCamera_flags,
             )
-            print("pinhole calibration reproj_err : ", reproj_err)
 
         elif self.camera_info.camera_model == CameraModel.FISHEYE:
             print("mono fisheye calibration...")
@@ -364,8 +364,6 @@ class MonoCalibrator(CameraCalibrator):
                 np.zeros((4, 1)),
                 flags=calibrate_flags.cv2_fisheye_calibrate_flags,
             )
-            print("fisheye calibration reproj_err : ", reproj_err)
-
         info_check_level = CameraInfoCheckLevel.COMPLETED
         self.camera_info.info_check(info_check_level)
         self.calibrated = True

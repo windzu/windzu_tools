@@ -1,5 +1,15 @@
 """
 Author: windzu
+Date: 2022-06-01 09:07:48
+LastEditTime: 2022-06-01 13:45:53
+LastEditors: windzu
+Description: 
+FilePath: /windzu_tools/common/tf_info.py
+@Copyright (C) 2021-2022 plusgo Company Limited. All rights reserved.
+@Licensed under the Apache License, Version 2.0 (the License)
+"""
+"""
+Author: windzu
 Date: 2022-06-01 00:21:17
 LastEditTime: 2022-06-01 00:40:36
 LastEditors: windzu
@@ -39,7 +49,10 @@ class TFInfo:
         self.serialize_tf_config()
 
     def serialize_tf_config(self):
-        """从原始字典格式解析配置信息"""
+        """从原始字典格式解析配置信息，包含旋转和平移
+        旋转:原始格式为len为9的list,转换为numpy.array的3x3旋转矩阵 4元数,然后转换为
+        平移:原始格式为len为3的list,转换为numpy.array的3x1平移向量
+        """
 
         def serialize_R(raw_tf_config):
             """解析旋转矩阵R为四元数元组"""
@@ -47,9 +60,6 @@ class TFInfo:
                 R = raw_tf_config["R"]
                 R = np.array(R, dtype=np.float32)
                 R = R.reshape(3, 3)
-                R = Rotation.from_matrix(R)  # 将tvec转换为四元数
-                R = R.as_quat()
-                R = tuple(R)
                 return R
             else:
                 return None
@@ -61,7 +71,6 @@ class TFInfo:
                 T = T.reshape(
                     3,
                 )
-                T = tuple(T)
                 return T
             else:
                 raise Exception("T is not in raw_tf_config")
