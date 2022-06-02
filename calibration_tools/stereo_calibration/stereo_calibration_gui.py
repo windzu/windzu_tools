@@ -132,6 +132,7 @@ class StereoCalibrationGUI(GUI):
             return
         self.node.start()
         print("[ GUI ] start success and complete calibration")
+        # 标定完成，信息同步，保存参数
         self.master_camera_info = self.node.master_camera_info
         self.slaver_camera_info = self.node.slaver_camera_info
         self.tf_info = self.node.tf_info
@@ -157,15 +158,13 @@ class StereoCalibrationGUI(GUI):
         with open(self.tf_config_path, "w") as f:
             yaml.dump(self.all_raw_tf_config, f, default_flow_style=False)
 
-        print("[ GUI ] tf_id : ", tf_id)
-        print("[ GUI ] R: ", self.tf_info.R)
-        print("[ GUI ] T: ", self.tf_info.T)
+        print("[ GUI ] save tf config success")
+        self.tf_info.echo()
         print("************************************************")
 
     def exit_callback(self):
         cv2.destroyAllWindows()
         self.win.destroy()
-        # exit mainloop
         self.win.quit()
         print("[ GUI ] exit success")
         print("************************************************")

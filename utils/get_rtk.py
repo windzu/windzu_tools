@@ -39,8 +39,7 @@ from common.car_position import CarPosition
 
 
 class GetRTK:
-    """订阅三个rostopic,解析获取想要的信息
-    """
+    """订阅三个rostopic,解析获取想要的信息"""
 
     def __init__(self, gps_topic, imu_topic):
         self.gps_topic = gps_topic
@@ -87,7 +86,7 @@ class GetRTK:
 
         # 因为yaw的定义不统一，yaw分几种情况
         # 1 正方向与右手坐标系正方向相同，需要补偿90度
-        yaw = math.pi / 2 + yaw
+        # yaw = math.pi / 2 + yaw
         # 2 正方向与右手坐标系正方向不同，需要补偿90度
         # yaw = math.pi / 2 - yaw
         # 3 yaw就是yaw

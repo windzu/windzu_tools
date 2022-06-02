@@ -211,13 +211,6 @@ class StereoCalibrator(CameraCalibrator):
                 self.T,
                 alpha=1,
             )
-            # debug
-            print("R1", R1)
-            print("R2", R2)
-            print("P1", P1)
-            print("P2", P2)
-            print("master first corner without undistort:", master_corners[0][0])
-            print("slaver first corner without undistort:", slaver_corners[0][0])
         elif self.master_camera_info.camera_model == CameraModel.FISHEYE:
             (
                 self.reproj_error,

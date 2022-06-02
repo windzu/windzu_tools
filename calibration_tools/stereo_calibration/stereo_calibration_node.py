@@ -12,6 +12,7 @@ import rospy
 import cv2
 import sys
 import numpy as np
+import tf
 
 # local
 sys.path.append("../../")
@@ -44,8 +45,8 @@ class StereoCalibrationNode:
 
         # 保存标定结果
         self.reproj_error = None  # 双目重投影误差
-        self.tf_info.R = None
-        self.tf_info.T = None
+        self.R = None
+        self.T = None
 
     def start(self):
         def on_trackbar(alpha_slider):
@@ -80,14 +81,20 @@ class StereoCalibrationNode:
             if key == 13:  # enter
                 self.calibrator._do_calibration()
                 self.calibrator.calibrated = True
-            if self.calibrator.calibrated is True:
+            if self.calibrator.calibrated is True:  # 标定完毕
                 cv2.destroyAllWindows()
                 break
         cv2.destroyAllWindows()
         # 保存标定结果
         self.reproj_error = self.calibrator.reproj_error
-        self.tf_info.R = self.calibrator.R
-        self.tf_info.T = self.calibrator.T
+        self.R = self.calibrator.R
+        self.T = self.calibrator.T
+        # R转四元数
+        transform = np.eye(4, dtype=np.float32)
+        transform[0:3, 0:3] = self.R
+        transform[0:3, 3] = self.T.reshape(3)
+        self.tf_info.rotation = tf.transformations.quaternion_from_matrix(transform)
+        self.tf_info.translation = self.T
 
     def show_result(self):
         def convert_board_to_4d(board_cols, board_rows, square_size):

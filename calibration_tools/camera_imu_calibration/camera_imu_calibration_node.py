@@ -16,12 +16,13 @@ import numpy as np
 import math
 import scipy
 from scipy.linalg import expm, norm
+import tf
 
 # import ros transform
 
 # local
 sys.path.append("../../")
-from common.enum_common import InfoCheckLevel
+from common.enum_common import CameraInfoCheckLevel
 
 
 class CameraIMUCalibrationNode:
@@ -63,21 +64,17 @@ class CameraIMUCalibrationNode:
         window_name = "collecting sample"
 
         # 如果是初次标定，则没有R和T的信息，需要初始化一下，初始化默认先围绕
-        if self.tf_info.R is None or self.tf_info.T is None:
-            self.tf_info.R = np.eye(3)
-
+        if self.tf_info.rotation is None or self.tf_info.translation is None:
+            self.tf_info.rotation = np.array([0, 0, 0, 1])
+            self.tf_info.translation = np.array([0, 0, 0])
         self.__opencv_trackbar_init(window_name)
 
         while True:
 
             frame = self.get_frame.read()
-            tl_info = self.tl_info
             car_position = self.get_rtk.get_car_position()
-            camera_info = self.camera_info
 
-            ret, center, roi_rect_pts = self.__calculate_roi(
-                tl_info=tl_info, car_position=car_position, camera_info=camera_info
-            )
+            ret, center, roi_rect_pts = self.calculate_roi(mode="manual")
             if ret is True:
                 cv2.circle(frame, center, 10, (0, 255, 0), 4)
                 cv2.rectangle(frame, roi_rect_pts[0], roi_rect_pts[1], (255, 0, 0), 2)
@@ -92,20 +89,13 @@ class CameraIMUCalibrationNode:
                 return
 
     def show_result(self):
-        info_check_level = InfoCheckLevel.IMU_TO_CAMERA
-        self.camera_info.info_check(info_check_level)
         print("*******start show result*******")
         window_name = "show result"
 
         while True:
             frame = self.get_frame.read()
-            tl_info = self.tl_info
-            car_position = self.get_rtk.get_car_position()
-            camera_info = self.camera_info
 
-            ret, center, roi_rect_pts = self.__calculate_roi(
-                tl_info=tl_info, car_position=car_position, camera_info=camera_info
-            )
+            ret, center, roi_rect_pts = self.calculate_roi(mode="show_mode")
             if ret is True:
                 cv2.circle(frame, center, 10, (0, 255, 0), 4)
                 cv2.rectangle(frame, roi_rect_pts[0], roi_rect_pts[1], (255, 0, 0), 2)
@@ -189,15 +179,15 @@ class CameraIMUCalibrationNode:
 
     def __on_translation_x_trackbar(self, progress):
         translation_x = (progress - (self.__translation_slider_max / 2)) / self.__translation_slider_step_size
-        self.tf_info.T[0] = translation_x
+        self.base_link_to_camera_translation_x = translation_x
 
     def __on_translation_y_trackbar(self, progress):
         translation_y = (progress - (self.__translation_slider_max / 2)) / self.__translation_slider_step_size
-        self.tf_info.T[1] = translation_y
+        self.base_link_to_camera_translation_y = translation_y
 
     def __on_translation_z_trackbar(self, progress):
         translation_z = (progress - (self.__translation_slider_max / 2)) / self.__translation_slider_step_size
-        self.tf_info.T[2] = translation_z
+        self.base_link_to_camera_translation_z = translation_z
 
     def __on_rotation_offset_x_trackbar(self, progress):
         # 通过滑动条设置的值，计算出滑动条设置的值对应的弧度值
@@ -225,37 +215,16 @@ class CameraIMUCalibrationNode:
         )
         self.base_link_to_camera_rotation_z_offset = rotation_offset_z
 
-    @staticmethod
-    def __map_to_pixel(map_to_base_link_transform, base_link_to_camera_transform, camera_matrix, tl_position):
-        """计算世界坐标点在相机的像素坐标系内的位置，需要提供如下信息
-        map坐标系到base_link的tf信息
-        base_link到相机坐标系的tf信息
-        相机内参
-        目标点的map坐标系下的位置(默认utm坐标)
-
-        Args:
-            map_to_base_link_transform(np.array): map坐标系到base_link的tf信息
-            base_link_to_camera_transform(np.array): base_link到相机坐标系的tf信息
-            camera_matrix(np.array): 相机内参(3x4)
-            tl_position(np.array): 目标点的map坐标系下的位置(默认utm坐标)(4x1)
-        """
-        target = np.linalg.inv(map_to_base_link_transform).dot(tl_position)
-        target = np.linalg.inv(base_link_to_camera_transform).dot(target)
-        target = camera_matrix.dot(target)
-        target = target / target[2]
-        return target[0], target[1]
-
-    def calculate_roi(self, car_position, tl_info, camera_info):
+    def calculate_roi(self, mode):
         """计算世界坐标点在相机坐标系内的位置，需要提供如下信息
         map坐标系到base_link的tf信息
         base_link到相机坐标系的tf信息
         相机内参
         目标点的map坐标系下的位置(默认utm坐标)
-
         Args:
-            tl_info (TLInfo): 存储一个红绿灯的位置、状态等信息
-            car_position (CarPosition): 存储一个车的位置、yaw等信息
-            camera_info (CameraInfo): 存储一个相机的很多信息，内外参数等
+            mode(str): 计算采用的参数模式
+                show_mode:根据tf_info的参数来提供base_link_to_camera_transform
+                calculate_mode:根据滑动条设置的参数来提供base_link_to_camera_transform
         """
 
         def calculate_map_to_base_link_transform(car_position):
@@ -265,37 +234,65 @@ class CameraIMUCalibrationNode:
             )
             # 旋转矩阵
             z_axis = [0, 0, 1]
-            R = rotate_mat(z_axis, car_position.yaw, 4)
+            R = self.rotate_mat(z_axis, car_position.yaw)
             map_to_base_link_transform = np.eye(4)
             map_to_base_link_transform[:3, :3] = R
             map_to_base_link_transform[:3, 3] = T[:3, 3]
 
             return map_to_base_link_transform
 
-        def calculate_base_link_to_camera_transform(
-            translation_x, translation_y, translation_z, rotation_x, rotation_y, rotation_z
+        def calculate_base_link_to_camera_transform_from_manual(
+            translation_x, translation_y, translation_z, rotation_x_offset, rotation_y_offset, rotation_z_offset
         ):
             """通过滑动条设置的值,计算出该值对应的base_link到相机坐标系的tf信息
-            这个计算中因为要旋转多次，所以有一个旋转顺序，旋转顺序如下：
-            1. 先旋转y轴,正方向90度
-            2. 再旋转x轴,逆方向90度
-            3. 再旋转z轴,正方向90度
+            这个计算中因为要旋转多次,所以有一个旋转顺序,旋转顺序按照xyz三个轴的方向如下:
+            1. 先旋转x轴,逆方向90度
+            2. 再旋转y轴,0度
+            3. 再旋转z轴,逆方向90度
 
             Args:
                 translation_x (_type_): _description_
                 translation_y (_type_): _description_
                 translation_z (_type_): _description_
-                rotation_x (_type_): _description_
-                rotation_y (_type_): _description_
-                rotation_z (_type_): _description_
+                rotation_x_offset (_type_): 相机坐标系下围绕x轴角度偏转:对应base_link下的y轴的逆方向
+                rotation_y_offset (_type_): 相机坐标系下围绕y轴角度偏转:对应base_link下的z轴的逆方向
+                rotation_z_offset (_type_): 相机坐标系下围绕x轴角度偏转:对应base_link下的x轴的正方向
             """
-            pass
+            rotation_x = -math.pi / 2 + rotation_z_offset
+            rotation_y = 0 - rotation_x_offset
+            rotation_z = -math.pi / 2 - rotation_y_offset
+
+            # 平移矩阵
+            T = np.array([[1, 0, 0, translation_x], [0, 1, 0, translation_y], [0, 0, 1, translation_z], [0, 0, 0, 1]])
+            # 旋转矩阵
+            x_axis = [1, 0, 0]
+            y_axis = [0, 1, 0]
+            z_axis = [0, 0, 1]
+            x_R = self.rotate_mat(x_axis, rotation_x)
+            y_R = self.rotate_mat(y_axis, rotation_y)
+            z_R = self.rotate_mat(z_axis, rotation_z)
+            R = z_R.dot(y_R).dot(x_R)
+            base_link_to_camera_transform = np.eye(4)
+            base_link_to_camera_transform[:3, :3] = R
+            base_link_to_camera_transform[:3, 3] = T[:3, 3]
+
+            return base_link_to_camera_transform
+
+        def calculate_base_link_to_camera_transform_from_tf_info(tf_info):
+            rotation = tf_info.rotation
+            translation = tf_info.translation
+            # 四元数转换为旋转矩阵
+            R = tf.transformations.quaternion_matrix(rotation)
+            base_link_to_camera_transform = np.eye(4)
+            base_link_to_camera_transform[:3, :3] = R[:3, :3]
+            base_link_to_camera_transform[:3, 3] = translation
+            return base_link_to_camera_transform
 
         def revise_roi_bbox(targt, padding_ratio, camera_info):
             """根据投影计算出的红绿灯点,并指定一个padding宽度,计算出一个不超过图像的bbox,并返回center和roi的bbox"""
             if targt[2] < 0:
                 return False, None, None
-            roi_center = (int(targt[0] / targt[2]), int(targt[1] / targt[2]))
+            roi_center = (int(targt[0]), int(targt[1]))
             img_width = camera_info.resolution[0]
             img_height = camera_info.resolution[1]
             padding = int(img_width * padding_ratio)
@@ -318,67 +315,40 @@ class CameraIMUCalibrationNode:
             pt2 = (pt2_x, pt2_y)
             return True, roi_center, (pt1, pt2)
 
+        tl_info = self.tl_info
+        car_position = self.get_rtk.get_car_position()
+        camera_info = self.camera_info
+
+        print("yaw:", car_position.yaw)
+
         map_to_base_link_transform = calculate_map_to_base_link_transform(car_position)
-        base_link_to_camera_transform = np.eye(4)
-
-        x_axis = [1, 0, 0]
-        y_axis = [0, 1, 0]
-        z_axis = [0, 0, 1]
-
-        # imu坐标到相机坐标的变换
-        # 先平移到相机的中心，再围绕其中两个轴旋转，再围绕三个轴微小的旋转
-        imu_to_camera_translation_matrix = np.eye(4)
-        imu_to_camera_translation_matrix = np.array(
-            [
-                [1, 0, 0, -camera_info.imu_to_camera_translation_xyz[0]],
-                [0, 1, 0, -camera_info.imu_to_camera_translation_xyz[1]],
-                [0, 0, 1, -camera_info.imu_to_camera_translation_xyz[2]],
-                [0, 0, 0, 1],
-            ]
-        )
-        # 先围绕y轴正方向旋转90度，再围绕z逆方向旋转90度
-        imu_to_camera_rotation_matrix = np.dot(rotate_mat(z_axis, math.pi / 2, 4), rotate_mat(y_axis, -math.pi / 2, 4))
-        imu_to_camera_tranformation_matrix = np.dot(imu_to_camera_rotation_matrix, imu_to_camera_translation_matrix)
-        # 小角度微调
-        camera_offset_rotation_matrix = np.eye(4)
-        camera_x_offset_rotation_matrix = rotate_mat(x_axis, -camera_info.imu_to_camera_rotation_offset_xyz[0], 4)
-        camera_y_offset_rotation_matrix = rotate_mat(y_axis, -camera_info.imu_to_camera_rotation_offset_xyz[1], 4)
-        camera_z_offset_rotation_matrix = rotate_mat(z_axis, -camera_info.imu_to_camera_rotation_offset_xyz[2], 4)
-        camera_offset_rotation_matrix = np.dot(camera_x_offset_rotation_matrix, camera_y_offset_rotation_matrix)
-        camera_offset_rotation_matrix = np.dot(camera_offset_rotation_matrix, camera_z_offset_rotation_matrix)
-        # 微调后合并
-        imu_to_camera_tranformation_matrix = np.dot(camera_offset_rotation_matrix, imu_to_camera_tranformation_matrix)
-
-        # world to pixel transformation
-        intrinsics_matrix = camera_info.intrinsics_matrix
-        camera_to_pixel_translation_matrix = np.eye(4)
-        camera_to_pixel_translation_matrix = np.concatenate((intrinsics_matrix, np.zeros((1, 3))), axis=0)
-        camera_to_pixel_translation_matrix = np.concatenate(
-            (camera_to_pixel_translation_matrix, np.zeros((4, 1))), axis=1
-        )
-        camera_to_pixel_translation_matrix[3, 3] = 1
-
-        world_to_pixel_tranformation_matrix = np.eye(4)
-        world_to_camera_tranformation_matrix = np.dot(
-            imu_to_camera_tranformation_matrix, world_to_imu_tranformation_matrix
-        )
-        world_to_pixel_tranformation_matrix = np.dot(
-            camera_to_pixel_translation_matrix, world_to_camera_tranformation_matrix
-        )
-
+        if mode == "show_mode":
+            base_link_to_camera_transform = calculate_base_link_to_camera_transform_from_tf_info(self.tf_info)
+        else:
+            base_link_to_camera_transform = calculate_base_link_to_camera_transform_from_manual(
+                translation_x=self.base_link_to_camera_translation_x,
+                translation_y=self.base_link_to_camera_translation_y,
+                translation_z=self.base_link_to_camera_translation_z,
+                rotation_x_offset=self.base_link_to_camera_rotation_x_offset,
+                rotation_y_offset=self.base_link_to_camera_rotation_y_offset,
+                rotation_z_offset=self.base_link_to_camera_rotation_z_offset,
+            )
+            self.update_tf_info(base_link_to_camera_transform)
+        print("base_link_to_camera_transform:", base_link_to_camera_transform)
+        camera_matrix = np.concatenate((camera_info.intrinsics_matrix, np.zeros((3, 1))), axis=1)
         tl_position = np.array([[tl_info.x], [tl_info.y], [tl_info.z], [1]])
-        # debug
-        print("tl_position:", tl_position.flatten())
-        print("car_position:", car_position.x, car_position.y, car_position.z, car_position.yaw)
-        # tl_in_imu_position = np.dot(world_to_imu_tranformation_matrix, tl_position)
-        # print("tl_in_imu_position:", tl_in_imu_position)
-        tl_in_camera_position = np.dot(world_to_camera_tranformation_matrix, tl_position)
-        print("tl_in_camera_position:", tl_in_camera_position)
+        target = self.map_to_pixel(
+            map_to_base_link_transform, base_link_to_camera_transform, camera_matrix, tl_position
+        )
 
-        targt = np.dot(world_to_pixel_tranformation_matrix, tl_position)
-        targt = targt.flatten().tolist()
-        padding_ratio = 0.1
-        return revise_roi_bbox(targt, padding_ratio, camera_info)
+        return revise_roi_bbox(target, 0.2, camera_info)
+
+    def update_tf_info(self, transform):
+        """将变换矩阵转换为4元数和平移向量存储在tf_info中"""
+        translation_vector = transform[:3, 3]
+        quaternion = tf.transformations.quaternion_from_matrix(transform)  # 需要transform为4x4矩阵
+        self.tf_info.rotation = quaternion
+        self.tf_info.translation = translation_vector
 
     @staticmethod
     def rotate_mat(axis, radian, dim=3):
@@ -398,3 +368,25 @@ class CameraIMUCalibrationNode:
             m2 = np.concatenate((m1, np.zeros((4, 1))), axis=1)
             m2[3, 3] = 1
             return m2
+
+    @staticmethod
+    def map_to_pixel(map_to_base_link_transform, base_link_to_camera_transform, camera_matrix, tl_position):
+        """计算世界坐标点在相机的像素坐标系内的位置，需要提供如下信息
+        map坐标系到base_link的tf信息
+        base_link到相机坐标系的tf信息
+        相机内参
+        目标点的map坐标系下的位置(默认utm坐标)
+
+        Args:
+            map_to_base_link_transform(np.array): map坐标系到base_link的tf信息
+            base_link_to_camera_transform(np.array): base_link到相机坐标系的tf信息
+            camera_matrix(np.array): 相机内参(3x4)
+            tl_position(np.array): 目标点的map坐标系下的位置(默认utm坐标)(4x1)
+        """
+
+        target = np.linalg.inv(map_to_base_link_transform).dot(tl_position)
+        target = np.linalg.inv(base_link_to_camera_transform).dot(target)
+        target = camera_matrix.dot(target)
+        target = target / target[2]
+
+        return target

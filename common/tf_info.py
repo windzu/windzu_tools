@@ -42,10 +42,9 @@ class TFInfo:
         self.tf_id = tf_id
         self.parent_frame_id = None
         self.child_frame_id = None
-        self.R = None
-        self.T = None
+        self.rotation = None  # 四元数
+        self.translation = None  # 平移向量
 
-        # 解析字典,构造相机信息
         self.serialize_tf_config()
 
     def serialize_tf_config(self):
@@ -54,47 +53,47 @@ class TFInfo:
         平移:原始格式为len为3的list,转换为numpy.array的3x1平移向量
         """
 
-        def serialize_R(raw_tf_config):
+        def serialize_rotation(raw_tf_config):
             """解析旋转矩阵R为四元数元组"""
-            if "R" in raw_tf_config.keys() and raw_tf_config["R"] is not None:
-                R = raw_tf_config["R"]
-                R = np.array(R, dtype=np.float32)
-                R = R.reshape(3, 3)
-                return R
+            if "rotation" in raw_tf_config.keys() and raw_tf_config["rotation"] is not None:
+                rotation = raw_tf_config["rotation"]
+                rotation = np.array(rotation, dtype=np.float32)
+                rotation = rotation.reshape(
+                    4,
+                )
+                return rotation
             else:
-                return None
+                raise Exception("[ tf_info ] : raw_tf_config中没有rotation")
 
-        def serialize_T(raw_tf_config):
-            if "T" in raw_tf_config.keys() and raw_tf_config["T"] is not None:
-                T = raw_tf_config["T"]
-                T = np.array(T, dtype=np.float32)
-                T = T.reshape(
+        def serialize_translation(raw_tf_config):
+            if "translation" in raw_tf_config.keys() and raw_tf_config["translation"] is not None:
+                translation = raw_tf_config["translation"]
+                translation = np.array(translation, dtype=np.float32)
+                translation = translation.reshape(
                     3,
                 )
-                return T
+                return translation
             else:
-                raise Exception("T is not in raw_tf_config")
+                raise Exception("[ tf_info ] : raw_tf_config中没有translation")
 
         self.parent_frame_id = self.tf_id.split("_to_")[0]
         self.child_frame_id = self.tf_id.split("_to_")[1]
 
-        raw_tf_config = self.raw_tf_config
-        if raw_tf_config is None:
-            print("raw_tf_config is None")
+        if self.raw_tf_config is None:
+            print("[ TFInfo ]  raw_tf_config is None")
             return
-        self.R = serialize_R(raw_tf_config)
-        self.T = serialize_T(raw_tf_config)
+        self.rotation = serialize_rotation(self.raw_tf_config)
+        self.translation = serialize_translation(self.raw_tf_config)
 
     def deserialize_tf_config(self):
         if self.raw_tf_config is None:
             self.raw_tf_config = dict()
-        self.raw_tf_config["R"] = self.R.flatten().tolist()
-        self.raw_tf_config["T"] = self.T.flatten().tolist()
+        self.raw_tf_config["rotation"] = self.rotation.flatten().tolist()
+        self.raw_tf_config["translation"] = self.translation.flatten().tolist()
         return self.raw_tf_config
 
     def echo(self):
-        print("[ tf_info ] : ")
-        print("     parent_frame_id: ", self.parent_frame_id)
-        print("     child_frame_id: ", self.child_frame_id)
-        print("     R: ", self.R)
-        print("     T: ", self.T)
+        print("[ TFInfo ] parent_frame_id: ", self.parent_frame_id)
+        print("[ TFInfo ] child_frame_id: ", self.child_frame_id)
+        print("[ TFInfo ] rotation: ", self.rotation)
+        print("[ TFInfo ] translation: ", self.translation)

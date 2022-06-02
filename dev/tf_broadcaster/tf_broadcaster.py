@@ -49,16 +49,16 @@ def main():
         for key, value in all_raw_tf_config.items():
             tf_info = TFInfo(key, value)
 
-            # convert numpy.array to quaternion and translation
-            R = Rotation.from_matrix(tf_info.R)  # 将（3,3）转换为四元数
-            R = R.as_quat()
-            R = tuple(R)
-
-            T = tuple(tf_info.T)  # (3,)转换为tuple
+            #             # convert numpy.array to quaternion and translation
+            #             R = Rotation.from_matrix(tf_info.R)  # 将（3,3）转换为四元数
+            #             R = R.as_quat()
+            #             R = tuple(R)
+            #
+            #             T = tuple(tf_info.T)  # (3,)转换为tuple
 
             br.sendTransform(
-                translation=T,
-                rotation=R,
+                translation=tf_info.translation,
+                rotation=tf_info.rotation,
                 time=rospy.Time.now(),
                 child=tf_info.child_frame_id,
                 parent=tf_info.parent_frame_id,

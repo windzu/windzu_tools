@@ -19,14 +19,19 @@ from camera_imu_calibartion_gui import CameraIMUCalibrationGUI
 
 def main():
     rospy.init_node("test")
-    camera_config_path = "../../../../config/camera_config_test.yaml"
-    hdmap_config_path = "../../../../hdmap/jianghuai.json"
+    camera_config_path = "../../config/camera_config_test.yaml"
+    tf_config_path = "../../config/tf_config_test.yaml"
+    hdmap_config_path = "../../hdmap/jianghuai.json"
 
     gps_topic = "/rtk_gps"
     imu_topic = "/rtk_imu"
 
     gui = CameraIMUCalibrationGUI(
-        camera_config_path=camera_config_path, hdmap_config_path=hdmap_config_path, get_rtk_topics=get_rtk_topics
+        camera_config_path=camera_config_path,
+        tf_config_path=tf_config_path,
+        hdmap_config_path=hdmap_config_path,
+        gps_topic=gps_topic,
+        imu_topic=imu_topic,
     )
 
 

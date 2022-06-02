@@ -19,7 +19,7 @@ from tkinter import ttk  # 导入ttk模块，因为下拉菜单控件在ttk中
 
 # local
 sys.path.append("../../")
-from common.camera_common import ChessboardInfo
+from common.chessboard_info import ChessboardInfo
 from common.gui import GUI
 from common.tf_info import TFInfo
 from camera_imu_calibration_node import CameraIMUCalibrationNode
@@ -44,9 +44,10 @@ from utils.parse_hdmap import parse_hdmap
 
 
 class CameraIMUCalibrationGUI(GUI):
-    def __init__(self, camera_config_path, hdmap_config_path, gps_topic, imu_topic):
+    def __init__(self, camera_config_path, tf_config_path, hdmap_config_path, gps_topic, imu_topic):
         super(CameraIMUCalibrationGUI, self).__init__()
         self.camera_config_path = camera_config_path
+        self.tf_config_path = tf_config_path
         self.hdmap_config_path = hdmap_config_path
         self.gps_topic = gps_topic
         self.imu_topic = imu_topic
@@ -81,9 +82,6 @@ class CameraIMUCalibrationGUI(GUI):
         # tl info init
         self.tl_info = self.all_tl_info[tl_id]
         # tf info init
-        # 从imu到相机的坐标系变换
-        # 1. 先y轴正方向旋转90度
-        # 2. 再x轴逆方向旋转90度
         tf_id = "/imu" + "_to_" + camera_id
         if tf_id not in self.all_raw_tf_config.keys():
             self.tf_info = TFInfo(tf_id)
@@ -123,28 +121,29 @@ class CameraIMUCalibrationGUI(GUI):
         self.tf_info = self.node.tf_info
 
     def show_result_callback(self):
-        print("show result")
+        print("[ GUI ] show result")
         self.node.show_result()
+        print("************************************************")
 
     def save_callback(self):
         if self.node is None:
-            raise Exception("please set params first!")
+            raise Exception("[ GUI ] please set params first!")
 
         tf_id = self.tf_info.tf_id
         self.all_raw_tf_config[tf_id] = self.tf_info.deserialize_tf_config()
 
         with open(self.tf_config_path, "w") as f:
             yaml.dump(self.all_raw_tf_config, f, default_flow_style=False)
-        print("[ GUI ] tf_id : ", tf_id)
-        print("[ GUI ] R: ", self.tf_info.R)
-        print("[ GUI ] T: ", self.tf_info.T)
+        print("[ GUI ] save tf config success")
+        self.tf_info.echo()
         print("************************************************")
 
     def exit_callback(self):
         cv2.destroyAllWindows()
         self.win.quit()
         self.win.destroy()
-        print("exit success")
+        print("[ GUI ] exit success")
+        print("************************************************")
 
     def __loading_files(self):
         """读取配置文件"""
@@ -189,9 +188,6 @@ class CameraIMUCalibrationGUI(GUI):
         self.save_button = ttk.Button(self.win, text="save", command=self.save_callback)
         self.exit_button = ttk.Button(self.win, text="exit", command=self.exit_callback)
 
-        # ttk label for show result
-        self.show_state_label = ttk.Label(self.win, text="nothing happened")
-
         # layout
         self.__gui_layout()
         # loop
@@ -218,10 +214,6 @@ class CameraIMUCalibrationGUI(GUI):
         row_count += 1
         ################################################################################
         self.exit_button.grid(row=row_count, column=1)
-        row_count += 1
-        ################################################################################
-        # use two column to show result
-        self.show_state_label.grid(row=row_count, column=1, columnspan=2, sticky="NW")
         row_count += 1
 
     def __get_params_from_gui(self):
