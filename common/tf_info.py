@@ -1,17 +1,7 @@
 """
 Author: windzu
 Date: 2022-06-01 09:07:48
-LastEditTime: 2022-06-01 13:45:53
-LastEditors: windzu
-Description: 
-FilePath: /windzu_tools/common/tf_info.py
-@Copyright (C) 2021-2022 plusgo Company Limited. All rights reserved.
-@Licensed under the Apache License, Version 2.0 (the License)
-"""
-"""
-Author: windzu
-Date: 2022-06-01 00:21:17
-LastEditTime: 2022-06-01 00:40:36
+LastEditTime: 2022-06-06 16:42:58
 LastEditors: windzu
 Description: 
 FilePath: /windzu_tools/common/tf_info.py
@@ -31,7 +21,7 @@ from common.enum_common import CameraModel, CameraInfoCheckLevel, FrameInputMode
 
 class TFInfo:
     def __init__(self, tf_id, raw_tf_config=None):
-        """存储tf的基本信息,包括旋转和平移
+        """存储tf的基本信息,包括四元数和平移向量。解析后格式为numpy.array的vector类型
 
         Args:
             tf_id (_type_): 两个frame的组合id:parent_frame_id_to_child_frame_id
@@ -48,13 +38,10 @@ class TFInfo:
         self.serialize_tf_config()
 
     def serialize_tf_config(self):
-        """从原始字典格式解析配置信息，包含旋转和平移
-        旋转:原始格式为len为9的list,转换为numpy.array的3x3旋转矩阵 4元数,然后转换为
-        平移:原始格式为len为3的list,转换为numpy.array的3x1平移向量
-        """
+        """从原始字典格式解析配置信息，包含四元数和平移向量"""
 
         def serialize_rotation(raw_tf_config):
-            """解析旋转矩阵R为四元数元组"""
+            """解析旋转四元数元组"""
             if "rotation" in raw_tf_config.keys() and raw_tf_config["rotation"] is not None:
                 rotation = raw_tf_config["rotation"]
                 rotation = np.array(rotation, dtype=np.float32)
@@ -66,6 +53,7 @@ class TFInfo:
                 raise Exception("[ tf_info ] : raw_tf_config中没有rotation")
 
         def serialize_translation(raw_tf_config):
+            """解析平移向量"""
             if "translation" in raw_tf_config.keys() and raw_tf_config["translation"] is not None:
                 translation = raw_tf_config["translation"]
                 translation = np.array(translation, dtype=np.float32)
