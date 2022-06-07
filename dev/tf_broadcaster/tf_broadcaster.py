@@ -1,63 +1,67 @@
 """
 Author: windzu
-Date: 2022-06-01 09:07:48
-LastEditTime: 2022-06-06 16:46:00
+Date: 2022-06-07 09:25:26
+LastEditTime: 2022-06-07 18:06:50
 LastEditors: windzu
 Description: 
 FilePath: /windzu_tools/dev/tf_broadcaster/tf_broadcaster.py
 @Copyright (C) 2021-2022 plusgo Company Limited. All rights reserved.
 @Licensed under the Apache License, Version 2.0 (the License)
 """
-# ros tf publisher
-import rospy
-import tf
 import sys
-from scipy.spatial.transform import Rotation
+import rospy
 import numpy as np
-import yaml
-
-
-#
+import tf
 import tf2_ros
+from scipy.linalg import expm, norm
 import geometry_msgs.msg
-
 
 # local
 sys.path.append("../../")
-from common.tf_info import TFInfo
-from utils.parse_tf_config import parse_tf_config
+from utils.get_rtk import GetRTK
+
+
+def calculate_map_to_base_link_tf(car_position, map_frame_id="/map", base_link_frame_id="/base_link"):
+    # get quaternion from euler angle
+    quaternion = tf.transformations.quaternion_from_euler(0, 0, car_position.yaw)
+    transformStamped = geometry_msgs.msg.TransformStamped()
+    transformStamped.header.stamp = rospy.Time.now()
+    transformStamped.header.frame_id = map_frame_id
+    transformStamped.child_frame_id = base_link_frame_id
+    transformStamped.transform.translation.x = car_position.x
+    transformStamped.transform.translation.y = car_position.y
+    transformStamped.transform.translation.z = car_position.z
+    transformStamped.transform.rotation.x = quaternion[0]
+    transformStamped.transform.rotation.y = quaternion[1]
+    transformStamped.transform.rotation.z = quaternion[2]
+    transformStamped.transform.rotation.w = quaternion[3]
+
+    return transformStamped
 
 
 def main():
-    rospy.init_node("ststic_tf_publish")
+    rospy.init_node("tf_publisher")
+    gps_topic = "/rtk_gps"
+    imu_topic = "/rtk_imu"
+    get_rtk = GetRTK(gps_topic=gps_topic, imu_topic=imu_topic)
 
-    # static tf broadcaster
-    static_broadcaster = tf2_ros.StaticTransformBroadcaster()
-    tf_config_path = "../../config/tf_config_test.yaml"
-    with open(tf_config_path, "r") as f:
-        all_raw_tf_config = yaml.load(f)
-    static_transformStamped_list = []
-    for key, value in all_raw_tf_config.items():
-        tf_info = TFInfo(key, value)
-        static_transformStamped = geometry_msgs.msg.TransformStamped()
-        static_transformStamped.header.stamp = rospy.Time.now()
-        static_transformStamped.header.frame_id = tf_info.parent_frame_id
-        static_transformStamped.child_frame_id = tf_info.child_frame_id
-        static_transformStamped.transform.translation.x = float(tf_info.translation[0])
-        static_transformStamped.transform.translation.y = float(tf_info.translation[1])
-        static_transformStamped.transform.translation.z = float(tf_info.translation[2])
+    # tf2 broadcaster
+    tf2_broadcaster = tf2_ros.TransformBroadcaster()
+    rate = rospy.Rate(10)
+    while not rospy.is_shutdown():
+        car_position = get_rtk.get_car_position()
 
-        static_transformStamped.transform.rotation.x = float(tf_info.rotation[0])
-        static_transformStamped.transform.rotation.y = float(tf_info.rotation[1])
-        static_transformStamped.transform.rotation.z = float(tf_info.rotation[2])
-        static_transformStamped.transform.rotation.w = float(tf_info.rotation[3])
-        static_transformStamped_list.append(static_transformStamped)
-        # static_broadcaster.sendTransform(static_transformStamped)
-        print("[ static_tf_publisher ] : send static tf: {}".format(tf_info.tf_id))
-        print("[ static_tf_publisher ] : from {} to {}".format(tf_info.parent_frame_id, tf_info.child_frame_id))
-    print("[ tf_broadcaster ] : static tf broadcast finished")
-    static_broadcaster.sendTransform(static_transformStamped_list)
-    rospy.spin()
+        if car_position is not None:
+
+            map_to_base_link_tf = calculate_map_to_base_link_tf(car_position)
+            # publish tf
+            tf2_broadcaster.sendTransform(map_to_base_link_tf)
+            print(
+                "[ tf_publisher ] : from {} to {}".format(
+                    map_to_base_link_tf.header.frame_id, map_to_base_link_tf.child_frame_id
+                )
+            )
+        rate.sleep()
 
 
 if __name__ == "__main__":

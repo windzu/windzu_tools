@@ -24,10 +24,10 @@ import message_filters
 from sensor_msgs.msg import NavSatFix, Imu
 import time, threading
 import tf
-import math
 
 # test lib from https://pypi.org/project/utm/
 import utm
+import math
 from pyproj import Transformer
 
 # TwistStamped
@@ -41,9 +41,25 @@ from common.car_position import CarPosition
 class GetRTK:
     """订阅三个rostopic,解析获取想要的信息"""
 
-    def __init__(self, gps_topic, imu_topic):
+    def __init__(
+        self,
+        gps_topic,
+        imu_topic,
+        direction=True,
+        offset_yaw=0,
+    ):
+        """根据传入的topic初始化订阅者
+
+        Args:
+            gps_topic (_type_): gps topic
+            imu_topic (_type_): imu topic
+            direction (bool): yaw角的定义方向,默认为True。True:正方向与右手坐标系正方向相同,False:正方向与右手坐标系正方向相反
+            offset_yaw (_type_): yaw角的偏移,默认为0。单位为角度制,便于人的理解
+        """
         self.gps_topic = gps_topic
         self.imu_topic = imu_topic
+        self.direction = direction
+        self.offset_yaw = offset_yaw
         # self.vel_topic = vel_topic
 
         self.car_position = None
@@ -84,14 +100,10 @@ class GetRTK:
         q = imu_msg.orientation
         (roll, pitch, yaw) = tf.transformations.euler_from_quaternion([q.x, q.y, q.z, q.w])
 
-        # 因为yaw的定义不统一，yaw分几种情况
-        # 1 正方向与右手坐标系正方向相同，需要补偿90度
-        # yaw = math.pi / 2 + yaw
-        # 2 正方向与右手坐标系正方向不同，需要补偿90度
-        # yaw = math.pi / 2 - yaw
-        # 3 yaw就是yaw
-
-        # print("yaw:", yaw)
+        if self.direction is True:
+            yaw = self.offset_yaw * (math.pi / 180) + yaw
+        else:
+            yaw = self.offset_yaw * (math.pi / 180) - yaw
 
         # u = utm.from_latlon(latitude, longtitude)
         (x, y) = self.transformer.transform(latitude, longtitude)
